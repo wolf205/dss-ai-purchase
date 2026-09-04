@@ -1,0 +1,528 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUM DEFINITIONS (12 ENUMS)
+// =============================================================================
+
+enum UserRole {
+  ADMIN
+  STAFF
+
+  @@map("user_role")
+}
+
+enum RiskLevel {
+  OUT_OF_STOCK
+  CRITICAL
+  WARNING
+  NORMAL
+  OVERSTOCK
+
+  @@map("risk_level")
+}
+
+enum MaturityTier {
+  COLD_START
+  BASIC_FORECAST
+  AI_READY
+
+  @@map("maturity_tier")
+}
+
+enum POStatus {
+  DRAFT
+  ORDERED
+  RECEIVED
+  CANCELLED
+
+  @@map("po_status")
+}
+
+enum ABCClass {
+  A
+  B
+  C
+
+  @@map("abc_class")
+}
+
+enum XYZClass {
+  X
+  Y
+  Z
+
+  @@map("xyz_class")
+}
+
+enum ABCXYZSegment {
+  AX
+  AY
+  AZ
+  BX
+  BY
+  BZ
+  CX
+  CY
+  CZ
+
+  @@map("abc_xyz_segment")
+}
+
+enum AlgorithmType {
+  AI_MODEL
+  FALLBACK_SMA7
+  BASIC_SMA7
+  COLD_START_ESTIMATE
+
+  @@map("algorithm_type")
+}
+
+enum ImportType {
+  SALES_HISTORY
+  INVENTORY_SNAPSHOT
+
+  @@map("import_type")
+}
+
+enum ImportStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+
+  @@map("import_status")
+}
+
+enum SupplierStatusTag {
+  NEW_SUPPLIER
+  ACTIVE
+
+  @@map("supplier_status_tag")
+}
+
+enum RecommendationStatus {
+  PENDING
+  ORDERED
+  DISMISSED
+
+  @@map("recommendation_status")
+}
+
+// =============================================================================
+// MODEL DEFINITIONS (18 TABLES)
+// =============================================================================
+
+// Bảng 1: users (Tài khoản người dùng & phân quyền)
+model User {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username           String    @unique @db.VarChar(50)
+  passwordHash       String    @map("password_hash") @db.VarChar(255)
+  fullName           String    @map("full_name") @db.VarChar(100)
+  email              String    @unique @db.VarChar(100)
+  role               UserRole  @default(STAFF)
+  isActive           Boolean   @default(true) @map("is_active")
+  mustChangePassword Boolean   @default(true) @map("must_change_password")
+  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Quan hệ
+  inventorySnapshots       InventorySnapshot[]
+  dataImportLogs           DataImportLog[]
+  coldStartInputs          ColdStartInput[]
+  supplierEvaluationWeights SupplierEvaluationWeight[]
+  createdPurchaseOrders    PurchaseOrder[]            @relation("POCreatedBy")
+  confirmedPurchaseOrders  PurchaseOrder[]            @relation("POConfirmedBy")
+  cancelledPurchaseOrders  PurchaseOrder[]            @relation("POCancelledBy")
+  deliveryHistories        DeliveryHistory[]
+  auditLogs                AuditLog[]
+
+  @@map("users")
+}
+
+// Bảng 2: products (Danh mục sản phẩm)
+model Product {
+  sku              String   @id @db.VarChar(50)
+  name             String   @db.VarChar(255)
+  category         String   @db.VarChar(100)
+  unit             String   @db.VarChar(50)
+  costPrice        Decimal  @map("cost_price") @db.Decimal(15, 2)
+  sellingPrice     Decimal  @map("selling_price") @db.Decimal(15, 2)
+  defaultLeadTime  Int      @default(1) @map("default_lead_time")
+  minSafetyStock   Int      @default(0) @map("min_safety_stock")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Quan hệ
+  productSuppliers       ProductSupplier[]
+  inventory              Inventory?
+  inventorySnapshots     InventorySnapshot[]
+  salesHistories         SalesHistory[]
+  coldStartInput         ColdStartInput?
+  demandForecasts        DemandForecast[]
+  abcXyzAnalyses         AbcXyzAnalysis[]
+  purchaseRecommendations PurchaseRecommendation[]
+  purchaseOrderItems     PurchaseOrderItem[]
+
+  @@index([category], map: "idx_products_category")
+  @@index([isActive], map: "idx_products_is_active")
+  @@map("products")
+}
+
+// Bảng 3: suppliers (Danh mục nhà cung cấp)
+model Supplier {
+  id        BigInt            @id @default(autoincrement())
+  code      String            @unique @db.VarChar(50)
+  name      String            @unique @db.VarChar(255)
+  phone     String            @db.VarChar(20)
+  email     String?           @db.VarChar(100)
+  address   String?           @db.Text
+  statusTag SupplierStatusTag @default(NEW_SUPPLIER) @map("status_tag")
+  isActive  Boolean           @default(true) @map("is_active")
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Quan hệ
+  productSuppliers       ProductSupplier[]
+  supplierEvaluations    SupplierEvaluation[]
+  purchaseRecommendations PurchaseRecommendation[]
+  purchaseOrders         PurchaseOrder[]
+  deliveryHistories      DeliveryHistory[]
+
+  @@index([isActive], map: "idx_suppliers_is_active")
+  @@index([statusTag], map: "idx_suppliers_status_tag")
+  @@map("suppliers")
+}
+
+// Bảng 4: product_suppliers (Bảng giá và điều kiện cung ứng N:M)
+model ProductSupplier {
+  id                BigInt   @id @default(autoincrement())
+  productSku        String   @map("product_sku") @db.VarChar(50)
+  supplierId        BigInt   @map("supplier_id")
+  purchasePrice     Decimal  @map("purchase_price") @db.Decimal(15, 2)
+  moq               Int      @default(1)
+  packSize          Int      @default(1) @map("pack_size")
+  committedLeadTime Int      @default(1) @map("committed_lead_time")
+  isPreferred       Boolean  @default(false) @map("is_preferred")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product  Product  @relation(fields: [productSku], references: [sku], onDelete: Restrict)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+
+  @@unique([productSku, supplierId], map: "unique_product_supplier")
+  @@index([productSku], map: "idx_product_suppliers_sku")
+  @@index([supplierId], map: "idx_product_suppliers_supplier")
+  @@map("product_suppliers")
+}
+
+// Bảng 5: inventory (Tồn kho và các chỉ số an toàn DSS)
+model Inventory {
+  productSku        String    @id @map("product_sku") @db.VarChar(50)
+  onHand            Int       @default(0) @map("on_hand")
+  onOrder           Int       @default(0) @map("on_order")
+  calculatedIp      Int?      @default(dbgenerated("(on_hand + on_order)")) @map("calculated_ip")
+  safetyStock       Int       @default(0) @map("safety_stock")
+  reorderPoint      Int       @default(0) @map("reorder_point")
+  maxStock          Int       @default(0) @map("max_stock")
+  daysOfSupply      Decimal   @default(0.0) @map("days_of_supply") @db.Decimal(7, 1)
+  riskLevel         RiskLevel @default(NORMAL) @map("risk_level")
+  isDeadStock       Boolean   @default(false) @map("is_dead_stock")
+  lastStocktakeDate DateTime? @map("last_stocktake_date") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productSku], references: [sku], onDelete: Cascade)
+
+  @@index([riskLevel], map: "idx_inventory_risk_level")
+  @@index([isDeadStock], map: "idx_inventory_is_dead_stock")
+  @@map("inventory")
+}
+
+// Bảng 6: inventory_snapshots (Nhật ký điều chỉnh kiểm kê tồn kho)
+model InventorySnapshot {
+  id                 BigInt   @id @default(autoincrement())
+  productSku         String   @map("product_sku") @db.VarChar(50)
+  snapshotDate       DateTime @default(now()) @map("snapshot_date") @db.Date
+  previousOnHand     Int      @map("previous_on_hand")
+  newOnHand          Int      @map("new_on_hand")
+  adjustmentQuantity Int      @map("adjustment_quantity")
+  reason             String?  @db.Text
+  adjustedBy         String?  @map("adjusted_by") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product  Product @relation(fields: [productSku], references: [sku], onDelete: Cascade)
+  adjuster User?   @relation(fields: [adjustedBy], references: [id], onDelete: SetNull)
+
+  @@map("inventory_snapshots")
+}
+
+// Bảng 7: data_import_logs (Nhật ký nạp tệp Excel/CSV)
+model DataImportLog {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  importType     ImportType   @map("import_type")
+  fileName       String       @map("file_name") @db.VarChar(255)
+  fileSizeBytes  BigInt       @map("file_size_bytes")
+  totalRows      Int          @default(0) @map("total_rows")
+  successfulRows Int          @default(0) @map("successful_rows")
+  failedRows     Int          @default(0) @map("failed_rows")
+  status         ImportStatus
+  errorDetails   Json?        @map("error_details")
+  importedBy     String?      @map("imported_by") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  importer       User?          @relation(fields: [importedBy], references: [id], onDelete: SetNull)
+  salesHistories SalesHistory[]
+
+  @@map("data_import_logs")
+}
+
+// Bảng 8: sales_history (Chuỗi thời gian bán hàng theo ngày)
+model SalesHistory {
+  id            BigInt   @id @default(autoincrement())
+  productSku    String   @map("product_sku") @db.VarChar(50)
+  saleDate      DateTime @map("sale_date") @db.Date
+  quantitySold  Int      @map("quantity_sold")
+  revenue       Decimal  @db.Decimal(15, 2)
+  source        String   @default("IMPORT_EXCEL") @db.VarChar(30)
+  importBatchId String?  @map("import_batch_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product     Product        @relation(fields: [productSku], references: [sku], onDelete: Restrict)
+  importBatch DataImportLog? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  @@unique([productSku, saleDate], map: "unique_product_sale_date")
+  @@index([productSku, saleDate(sort: Desc)], map: "idx_sales_history_sku_date")
+  @@index([saleDate], map: "idx_sales_history_date")
+  @@map("sales_history")
+}
+
+// Bảng 9: cold_start_inputs (Lượng bán dự kiến cho sản phẩm mới)
+model ColdStartInput {
+  productSku         String   @id @map("product_sku") @db.VarChar(50)
+  historyDaysCount   Int      @default(0) @map("history_days_count")
+  expectedDailySales Int      @map("expected_daily_sales")
+  notes              String?  @db.Text
+  updatedBy          String?  @map("updated_by") @db.Uuid
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productSku], references: [sku], onDelete: Cascade)
+  updater User?   @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("cold_start_inputs")
+}
+
+// Bảng 10: demand_forecasts (Kết quả dự báo nhu cầu chuỗi thời gian)
+model DemandForecast {
+  id               BigInt        @id @default(autoincrement())
+  productSku       String        @map("product_sku") @db.VarChar(50)
+  forecastDate     DateTime      @default(now()) @map("forecast_date") @db.Date
+  horizonDays      Int           @default(14) @map("horizon_days")
+  forecastedDemand Int           @map("forecasted_demand")
+  dailyAvgDemand   Decimal       @map("daily_avg_demand") @db.Decimal(10, 2)
+  wape             Decimal?      @db.Decimal(5, 2)
+  mae              Decimal?      @db.Decimal(10, 2)
+  algorithmUsed    AlgorithmType @map("algorithm_used")
+  isFallback       Boolean       @default(false) @map("is_fallback")
+  forecastPoints   Json          @map("forecast_points")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productSku], references: [sku], onDelete: Cascade)
+
+  @@unique([productSku, forecastDate, horizonDays], map: "unique_sku_forecast_horizon")
+  @@index([productSku, forecastDate(sort: Desc)], map: "idx_demand_forecasts_sku_date")
+  @@map("demand_forecasts")
+}
+
+// Bảng 11: abc_xyz_analysis (Phân loại ma trận ABC-XYZ 30 ngày)
+model AbcXyzAnalysis {
+  id                     BigInt        @id @default(autoincrement())
+  productSku             String        @map("product_sku") @db.VarChar(50)
+  analysisDate           DateTime      @default(now()) @map("analysis_date") @db.Date
+  windowDays             Int           @default(30) @map("window_days")
+  totalRevenue           Decimal       @map("total_revenue") @db.Decimal(15, 2)
+  revenuePct             Decimal       @map("revenue_pct") @db.Decimal(5, 2)
+  cumulativeRevenuePct   Decimal       @map("cumulative_revenue_pct") @db.Decimal(5, 2)
+  abcClass               ABCClass      @map("abc_class")
+  dailySalesMean         Decimal       @map("daily_sales_mean") @db.Decimal(10, 2)
+  dailySalesStdDev       Decimal       @map("daily_sales_std_dev") @db.Decimal(10, 2)
+  coefficientOfVariation Decimal       @map("coefficient_of_variation") @db.Decimal(7, 3)
+  xyzClass               XYZClass      @map("xyz_class")
+  abcXyzSegment          ABCXYZSegment @map("abc_xyz_segment")
+  createdAt              DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productSku], references: [sku], onDelete: Cascade)
+
+  @@unique([productSku, analysisDate], map: "unique_sku_analysis_date")
+  @@index([analysisDate(sort: Desc), abcXyzSegment], map: "idx_abc_xyz_analysis_date_seg")
+  @@map("abc_xyz_analysis")
+}
+
+// Bảng 12: supplier_evaluation_weights (Cấu hình trọng số đánh giá NCC)
+model SupplierEvaluationWeight {
+  id             Int      @id @default(1)
+  weightOtif     Decimal  @default(35.00) @map("weight_otif") @db.Decimal(5, 2)
+  weightQuality  Decimal  @default(30.00) @map("weight_quality") @db.Decimal(5, 2)
+  weightPrice    Decimal  @default(20.00) @map("weight_price") @db.Decimal(5, 2)
+  weightLeadtime Decimal  @default(15.00) @map("weight_leadtime") @db.Decimal(5, 2)
+  updatedBy      String?  @map("updated_by") @db.Uuid
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  updater User? @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("supplier_evaluation_weights")
+}
+
+// Bảng 13: supplier_evaluations (Đánh giá hiệu suất NCC 10 lần gần nhất)
+model SupplierEvaluation {
+  id                    BigInt   @id @default(autoincrement())
+  supplierId            BigInt   @map("supplier_id")
+  evaluationDate        DateTime @default(now()) @map("evaluation_date") @db.Date
+  deliveryCountAnalyzed Int      @default(0) @map("delivery_count_analyzed")
+  priceScore            Decimal  @map("price_score") @db.Decimal(5, 2)
+  otifScore             Decimal  @map("otif_score") @db.Decimal(5, 2)
+  qualityScore          Decimal  @map("quality_score") @db.Decimal(5, 2)
+  leadTimeScore         Decimal  @map("lead_time_score") @db.Decimal(5, 2)
+  totalScore            Decimal  @map("total_score") @db.Decimal(5, 2)
+  rank                  Int?
+  isNewSupplier         Boolean  @default(false) @map("is_new_supplier")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, evaluationDate], map: "unique_supplier_evaluation_date")
+  @@index([supplierId, evaluationDate(sort: Desc)], map: "idx_supplier_eval_supplier_date")
+  @@map("supplier_evaluations")
+}
+
+// Bảng 14: purchase_recommendations (Khuyến nghị mua hàng thông minh)
+model PurchaseRecommendation {
+  id                    BigInt               @id @default(autoincrement())
+  productSku            String               @map("product_sku") @db.VarChar(50)
+  recommendedSupplierId BigInt?              @map("recommended_supplier_id")
+  horizonDays           Int                  @default(14) @map("horizon_days")
+  onHandAtEval          Int                  @map("on_hand_at_eval")
+  onOrderAtEval         Int                  @map("on_order_at_eval")
+  forecastedDemand      Int                  @map("forecasted_demand")
+  safetyStock           Int                  @map("safety_stock")
+  rawShortage           Int                  @map("raw_shortage")
+  suggestedQuantity     Int                  @map("suggested_quantity")
+  suggestedOrderDate    DateTime             @map("suggested_order_date") @db.Date
+  estimatedUnitPrice    Decimal?             @map("estimated_unit_price") @db.Decimal(15, 2)
+  estimatedTotalCost    Decimal?             @map("estimated_total_cost") @db.Decimal(15, 2)
+  urgencyLevel          RiskLevel            @map("urgency_level")
+  explanationSummary    String               @map("explanation_summary") @db.Text
+  explanationFactors    Json                 @map("explanation_factors")
+  status                RecommendationStatus @default(PENDING)
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product             Product   @relation(fields: [productSku], references: [sku], onDelete: Cascade)
+  recommendedSupplier Supplier? @relation(fields: [recommendedSupplierId], references: [id], onDelete: SetNull)
+
+  @@index([status, urgencyLevel], map: "idx_purchase_recommendations_status")
+  @@map("purchase_recommendations")
+}
+
+// Bảng 15: purchase_orders (Đơn mua hàng Master)
+model PurchaseOrder {
+  id                   BigInt    @id @default(autoincrement())
+  poCode               String    @unique @map("po_code") @db.VarChar(50)
+  supplierId           BigInt    @map("supplier_id")
+  status               POStatus  @default(DRAFT)
+  orderDate            DateTime  @default(now()) @map("order_date") @db.Date
+  promisedDeliveryDate DateTime  @map("promised_delivery_date") @db.Date
+  actualDeliveryDate   DateTime? @map("actual_delivery_date") @db.Date
+  totalAmount          Decimal   @default(0.00) @map("total_amount") @db.Decimal(15, 2)
+  notes                String?   @db.Text
+  createdBy            String    @map("created_by") @db.Uuid
+  confirmedBy          String?   @map("confirmed_by") @db.Uuid
+  confirmedAt          DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  cancelledBy          String?   @map("cancelled_by") @db.Uuid
+  cancelledAt          DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason   String?   @map("cancellation_reason") @db.Text
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  supplier  Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  creator   User                @relation("POCreatedBy", fields: [createdBy], references: [id])
+  confirmer User?               @relation("POConfirmedBy", fields: [confirmedBy], references: [id])
+  canceller User?               @relation("POCancelledBy", fields: [cancelledBy], references: [id])
+  items     PurchaseOrderItem[]
+  deliveries DeliveryHistory[]
+
+  @@index([status, orderDate(sort: Desc)], map: "idx_purchase_orders_status")
+  @@index([supplierId], map: "idx_purchase_orders_supplier")
+  @@map("purchase_orders")
+}
+
+// Bảng 16: purchase_order_items (Chi tiết mặt hàng trong đơn PO)
+model PurchaseOrderItem {
+  id                BigInt   @id @default(autoincrement())
+  orderId           BigInt   @map("order_id")
+  productSku        String   @map("product_sku") @db.VarChar(50)
+  orderedQuantity   Int      @map("ordered_quantity")
+  unitPrice         Decimal  @map("unit_price") @db.Decimal(15, 2)
+  totalPrice        Decimal  @map("total_price") @db.Decimal(15, 2)
+  deliveredQuantity Int      @default(0) @map("delivered_quantity")
+  defectiveQuantity Int      @default(0) @map("defective_quantity")
+  acceptedQuantity  Int      @default(0) @map("accepted_quantity")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productSku], references: [sku], onDelete: Restrict)
+
+  @@unique([orderId, productSku], map: "unique_order_product")
+  @@index([orderId], map: "idx_purchase_order_items_order_id")
+  @@map("purchase_order_items")
+}
+
+// Bảng 17: delivery_history (Nhật ký nhận hàng & OTIF)
+model DeliveryHistory {
+  id                    BigInt   @id @default(autoincrement())
+  orderId               BigInt   @map("order_id")
+  supplierId            BigInt   @map("supplier_id")
+  promisedDate          DateTime @map("promised_date") @db.Date
+  actualDeliveryDate    DateTime @default(now()) @map("actual_delivery_date") @db.Date
+  totalOrderedQuantity  Int      @map("total_ordered_quantity")
+  totalDeliveredQuantity Int     @map("total_delivered_quantity")
+  totalDefectiveQuantity Int     @default(0) @map("total_defective_quantity")
+  totalAcceptedQuantity Int      @map("total_accepted_quantity")
+  leadTimeDays          Int      @map("lead_time_days")
+  isOnTime              Boolean  @map("is_on_time")
+  isInFull              Boolean  @map("is_in_full")
+  isOtif                Boolean  @map("is_otif")
+  notes                 String?  @db.Text
+  receivedBy            String   @map("received_by") @db.Uuid
+  receivedAt            DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  order    PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  supplier Supplier      @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  receiver User          @relation(fields: [receivedBy], references: [id])
+
+  @@index([supplierId, actualDeliveryDate(sort: Desc)], map: "idx_delivery_history_supplier_date")
+  @@map("delivery_history")
+}
+
+// Bảng 18: audit_logs (Nhật ký kiểm toán an ninh hệ thống)
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   @db.VarChar(100)
+  entityName String   @map("entity_name") @db.VarChar(50)
+  entityId   String?  @map("entity_id") @db.VarChar(100)
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_audit_logs_user_date")
+  @@map("audit_logs")
+}
