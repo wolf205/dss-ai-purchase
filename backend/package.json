@@ -4,7 +4,7 @@
   "description": "DSS AI Purchase Core Backend Service (Clean Architecture + Express + Prisma)",
   "main": "dist/api/server.js",
   "scripts": {
-    "build": "rimraf dist && tsc",
+    "build": "rimraf dist && tsc && tsc-alias",
     "start": "node dist/api/server.js",
     "dev": "nodemon --watch src -e ts --exec ts-node -r tsconfig-paths/register src/api/server.ts",
     "prisma:generate": "prisma generate",
@@ -36,6 +36,7 @@
     "prisma": "^5.20.0",
     "rimraf": "^5.0.5",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.9.4",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"
   }

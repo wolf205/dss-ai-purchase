@@ -8,7 +8,7 @@ RUN apk add --no-cache openssl libc6-compat
 # Cài đặt thư viện phụ thuộc
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 # Sinh Prisma Client và build TypeScript sang JavaScript
 COPY . .
@@ -30,5 +30,5 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 EXPOSE 5000
 
-# Chạy migration và khởi động server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/api/server.js"]
+# Chạy migration, nạp seed data và khởi động server
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run prisma:seed && node dist/api/server.js"]
