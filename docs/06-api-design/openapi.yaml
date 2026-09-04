@@ -1,0 +1,871 @@
+openapi: 3.0.3
+info:
+  title: Hệ Thống Hỗ Trợ Ra Quyết Định Mua Hàng Tích Hợp AI (DSS AI Purchase)
+  description: >
+    Tài liệu đặc tả API chuẩn OpenAPI 3.0 cho hệ thống Decision Support System (DSS)
+    hỗ trợ nhân viên mua hàng tối ưu hóa quy trình đặt hàng, cân bằng tồn kho và đánh giá nhà cung cấp.
+  version: 1.0.0
+  contact:
+    name: Nhóm Phát Triển DSS Purchase
+    email: contact@dss-purchase.local
+
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Môi trường phát triển cục bộ (Local Development)
+  - url: https://api.dss-purchase.local/api/v1
+    description: Môi trường sản xuất (Production)
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: Xác thực tài khoản và quản lý phiên làm việc (UC-015)
+  - name: Users
+    description: Quản trị tài khoản người dùng và phân quyền RBAC (UC-016)
+  - name: Products
+    description: Quản lý danh mục sản phẩm Master Data (UC-001)
+  - name: DataImport
+    description: Nạp dữ liệu bán hàng & tồn kho qua file Excel/CSV (UC-003)
+  - name: Suppliers
+    description: Danh mục nhà cung cấp và đánh giá hiệu suất (UC-002, UC-009)
+  - name: Config
+    description: Cấu hình tham số và trọng số đánh giá NCC (UC-017)
+  - name: Inventory
+    description: Dashboard tồn kho, cảnh báo rủi ro & ma trận ABC-XYZ (UC-004, UC-005, UC-006)
+  - name: Forecasts
+    description: Dự báo nhu cầu bán hàng chuỗi thời gian bằng AI (UC-007, UC-008)
+  - name: Recommendations
+    description: Khuyến nghị mua hàng thông minh & Chạy lại DSS (UC-010, UC-011)
+  - name: PurchaseOrders
+    description: Lập đơn mua hàng, khóa đơn, hủy đơn và nhận hàng kho (UC-012, UC-013, UC-014)
+
+paths:
+  # ===========================================================================
+  # 1. AUTH & USERS
+  # ===========================================================================
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Đăng nhập hệ thống
+      description: Xác thực tên đăng nhập và mật khẩu, trả về JWT token (UC-015)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Lấy thông tin tài khoản hiện tại
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMeResponse'
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Đổi mật khẩu cá nhân
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Đổi mật khẩu thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseMessageResponse'
+
+  /users:
+    get:
+      tags: [Users]
+      summary: Danh sách người dùng (Chỉ Admin)
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '403':
+          $ref: '#/components/responses/403Forbidden'
+    post:
+      tags: [Users]
+      summary: Tạo người dùng mới (Chỉ Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Tạo thành công
+        '409':
+          $ref: '#/components/responses/409Conflict'
+
+  /users/{id}/status:
+    patch:
+      tags: [Users]
+      summary: Khóa hoặc mở khóa tài khoản
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isActive]
+              properties:
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Cập nhật thành công
+
+  # ===========================================================================
+  # 2. PRODUCTS & INGESTION
+  # ===========================================================================
+  /products:
+    get:
+      tags: [Products]
+      summary: Tra cứu danh mục sản phẩm
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+    post:
+      tags: [Products]
+      summary: Thêm mới sản phẩm (Chỉ Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Tạo thành công
+        '409':
+          $ref: '#/components/responses/409Conflict'
+
+  /products/{sku}/360:
+    get:
+      tags: [Products]
+      summary: Xem chi tiết sản phẩm toàn cảnh 360 độ (UC-006)
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thành công
+
+  /data-import/upload:
+    post:
+      tags: [DataImport]
+      summary: Nạp file Excel/CSV bán hàng hoặc kiểm kê (UC-003)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                type:
+                  type: string
+                  enum: [SALES_HISTORY, INVENTORY_SNAPSHOT]
+      responses:
+        '200':
+          description: Nạp thành công
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+
+  # ===========================================================================
+  # 3. SUPPLIERS & EVALUATION
+  # ===========================================================================
+  /suppliers:
+    get:
+      tags: [Suppliers]
+      summary: Danh sách nhà cung cấp
+      responses:
+        '200':
+          description: Thành công
+    post:
+      tags: [Suppliers]
+      summary: Thêm mới nhà cung cấp (Chỉ Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSupplierRequest'
+      responses:
+        '201':
+          description: Tạo thành công
+
+  /suppliers/{id}/products:
+    post:
+      tags: [Suppliers]
+      summary: Thiết lập giá và điều kiện phân phối cho sản phẩm
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkProductSupplierRequest'
+      responses:
+        '201':
+          description: Thành công
+
+  /suppliers/evaluations:
+    get:
+      tags: [Suppliers]
+      summary: Bảng xếp hạng & 4 điểm thành phần của NCC (UC-009)
+      responses:
+        '200':
+          description: Thành công
+
+  /config/supplier-weights:
+    get:
+      tags: [Config]
+      summary: Xem bộ trọng số đánh giá NCC hiện hành (UC-017)
+      responses:
+        '200':
+          description: Thành công
+    put:
+      tags: [Config]
+      summary: Cập nhật trọng số NCC (Tổng bắt buộc 100%) (Chỉ Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWeightsRequest'
+      responses:
+        '200':
+          description: Thành công
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+
+  # ===========================================================================
+  # 4. INVENTORY & ANALYTICS
+  # ===========================================================================
+  /inventory/dashboard:
+    get:
+      tags: [Inventory]
+      summary: Thống kê KPI 5 cấp độ rủi ro tồn kho (UC-004)
+      responses:
+        '200':
+          description: Thành công
+
+  /inventory/items:
+    get:
+      tags: [Inventory]
+      summary: Bảng tồn kho SKU chi tiết (IP, SS, ROP, DoS)
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - name: riskLevel
+          in: query
+          schema:
+            type: string
+            enum: [OUT_OF_STOCK, CRITICAL, WARNING, NORMAL, OVERSTOCK]
+        - name: isDeadStock
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Thành công
+
+  /inventory/abc-xyz:
+    get:
+      tags: [Inventory]
+      summary: Ma trận 9 ô ABC-XYZ (UC-005)
+      responses:
+        '200':
+          description: Thành công
+
+  # ===========================================================================
+  # 5. FORECASTS
+  # ===========================================================================
+  /forecasts:
+    get:
+      tags: [Forecasts]
+      summary: Danh sách tổng cầu dự báo theo khung thời gian (UC-007)
+      parameters:
+        - name: horizon
+          in: query
+          schema:
+            type: integer
+            enum: [7, 14, 30]
+            default: 14
+      responses:
+        '200':
+          description: Thành công
+
+  /forecasts/{sku}:
+    get:
+      tags: [Forecasts]
+      summary: Chuỗi điểm dự báo & Dải tin cậy 95% cho 1 sản phẩm
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: horizon
+          in: query
+          schema:
+            type: integer
+            enum: [7, 14, 30]
+            default: 14
+      responses:
+        '200':
+          description: Thành công
+
+  /forecasts/cold-start:
+    post:
+      tags: [Forecasts]
+      summary: Nhập sản lượng bán dự kiến cho sản phẩm mới Cold Start (UC-008)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sku, expectedDailySales]
+              properties:
+                sku:
+                  type: string
+                expectedDailySales:
+                  type: integer
+                  minimum: 0
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Thành công
+
+  # ===========================================================================
+  # 6. RECOMMENDATIONS
+  # ===========================================================================
+  /recommendations:
+    get:
+      tags: [Recommendations]
+      summary: Danh sách khuyến nghị mua hàng thông minh (UC-010)
+      parameters:
+        - name: horizon
+          in: query
+          schema:
+            type: integer
+            enum: [7, 14, 30]
+            default: 14
+        - name: urgencyLevel
+          in: query
+          schema:
+            type: string
+            enum: [OUT_OF_STOCK, CRITICAL, WARNING]
+      responses:
+        '200':
+          description: Thành công
+
+  /recommendations/run-analysis:
+    post:
+      tags: [Recommendations]
+      summary: Kích hoạt chạy lại toàn bộ phân tích DSS on-demand (UC-011)
+      responses:
+        '200':
+          description: Phân tích hoàn tất thành công
+
+  # ===========================================================================
+  # 7. PURCHASE ORDERS & GOODS RECEIPT
+  # ===========================================================================
+  /purchase-orders:
+    get:
+      tags: [PurchaseOrders]
+      summary: Tra cứu lịch sử đơn mua hàng theo 4 trạng thái (UC-013)
+      parameters:
+        - $ref: '#/components/parameters/PageQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, ORDERED, RECEIVED, CANCELLED]
+      responses:
+        '200':
+          description: Thành công
+    post:
+      tags: [PurchaseOrders]
+      summary: Lập đơn mua hàng mới (Trạng thái DRAFT) (UC-012)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Tạo thành công
+
+  /purchase-orders/{id}:
+    get:
+      tags: [PurchaseOrders]
+      summary: Xem chi tiết đơn mua hàng
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Thành công
+
+  /purchase-orders/{id}/confirm:
+    post:
+      tags: [PurchaseOrders]
+      summary: Xác nhận chốt đơn mua hàng (Chuyển ORDERED & Tăng On-Order) (UC-012)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Xác nhận thành công
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+
+  /purchase-orders/{id}/cancel:
+    post:
+      tags: [PurchaseOrders]
+      summary: Hủy đơn mua hàng (UC-013)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Hủy thành công
+
+  /purchase-orders/{id}/receive:
+    post:
+      tags: [PurchaseOrders]
+      summary: Ghi nhận nhận hàng nguyên tử (Tăng On-Hand, Giảm On-Order, Log OTIF) (UC-014)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiveGoodsRequest'
+      responses:
+        '200':
+          description: Nhận hàng thành công
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+
+# =============================================================================
+# COMPONENTS (SCHEMAS, RESPONSES, PARAMETERS)
+# =============================================================================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageQuery:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    LimitQuery:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+
+  responses:
+    400BadRequest:
+      description: Dữ liệu gửi lên không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    401Unauthorized:
+      description: Chưa xác thực hoặc token hết hạn
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    403Forbidden:
+      description: Không có quyền truy cập
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    404NotFound:
+      description: Không tìm thấy tài nguyên
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    409Conflict:
+      description: Xung đột dữ liệu (trùng lặp)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    422Unprocessable:
+      description: Vi phạm quy tắc nghiệp vụ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [success, error, timestamp]
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Dữ liệu gửi lên không hợp lệ.
+            details:
+              type: array
+              items:
+                type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginSuccessResponse:
+      type: object
+      required: [success, data, timestamp]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [accessToken, user]
+          properties:
+            accessToken:
+              type: string
+            expiresIn:
+              type: integer
+              example: 28800
+            user:
+              type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    ChangePasswordRequest:
+      type: object
+      required: [oldPassword, newPassword]
+      properties:
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+
+    BaseMessageResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+
+    UserMeResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            role:
+              type: string
+              enum: [ADMIN, STAFF]
+
+    UserListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+        meta:
+          type: object
+
+    CreateUserRequest:
+      type: object
+      required: [username, password, fullName, email, role]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [ADMIN, STAFF]
+
+    ProductListResponse:
+      type: object
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+
+    CreateProductRequest:
+      type: object
+      required: [sku, name, category, unit, costPrice, sellingPrice]
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        unit:
+          type: string
+        costPrice:
+          type: number
+          minimum: 1
+        sellingPrice:
+          type: number
+          minimum: 1
+        defaultLeadTime:
+          type: integer
+          default: 1
+        minSafetyStock:
+          type: integer
+          default: 0
+
+    CreateSupplierRequest:
+      type: object
+      required: [code, name, phone]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+
+    LinkProductSupplierRequest:
+      type: object
+      required: [productSku, purchasePrice]
+      properties:
+        productSku:
+          type: string
+        purchasePrice:
+          type: number
+        moq:
+          type: integer
+          default: 1
+        packSize:
+          type: integer
+          default: 1
+        committedLeadTime:
+          type: integer
+          default: 1
+        isPreferred:
+          type: boolean
+          default: false
+
+    UpdateWeightsRequest:
+      type: object
+      required: [weightOtif, weightQuality, weightPrice, weightLeadtime]
+      properties:
+        weightOtif:
+          type: number
+        weightQuality:
+          type: number
+        weightPrice:
+          type: number
+        weightLeadtime:
+          type: number
+
+    CreateOrderRequest:
+      type: object
+      required: [supplierId, promisedDeliveryDate, items]
+      properties:
+        supplierId:
+          type: integer
+        promisedDeliveryDate:
+          type: string
+          format: date
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [productSku, orderedQuantity, unitPrice]
+            properties:
+              productSku:
+                type: string
+              orderedQuantity:
+                type: integer
+                minimum: 1
+              unitPrice:
+                type: number
+                minimum: 1
+
+    ReceiveGoodsRequest:
+      type: object
+      required: [actualDeliveryDate, items]
+      properties:
+        actualDeliveryDate:
+          type: string
+          format: date
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [sku, deliveredQuantity, defectiveQuantity]
+            properties:
+              sku:
+                type: string
+              deliveredQuantity:
+                type: integer
+                minimum: 0
+              defectiveQuantity:
+                type: integer
+                minimum: 0
