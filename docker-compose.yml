@@ -1,0 +1,99 @@
+services:
+  # ---------------------------------------------------------------------------
+  # 1. CƠ SỞ DỮ LIỆU POSTGRESQL (16-alpine)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: dss-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dss_secure_password_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-dss_ai_purchase_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - dss_postgres_data:/var/lib/postgresql/data
+    networks:
+      - dss-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-dss_ai_purchase_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # 2. DỊCH VỤ AI DỰ BÁO NHU CẦU (PYTHON FASTAPI - STATELESS COMPUTE)
+  # ---------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: dss-ai-service
+    restart: always
+    environment:
+      PORT: 8000
+      HOST: 0.0.0.0
+      LOG_LEVEL: info
+    ports:
+      - "8000:8000"
+    networks:
+      - dss-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # 3. CORE BACKEND API (NODE.JS + EXPRESS + PRISMA)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dss-backend
+    restart: always
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dss_secure_password_2026}@postgres:5432/${POSTGRES_DB:-dss_ai_purchase_db}?schema=public"
+      AI_SERVICE_URL: "http://ai-service:8000"
+      JWT_SECRET: ${JWT_SECRET:-dss_super_secret_jwt_key_graduation_2026}
+      JWT_EXPIRES_IN: "8h"
+      CORS_ORIGIN: "http://localhost:3000"
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    networks:
+      - dss-network
+
+  # ---------------------------------------------------------------------------
+  # 4. FRONTEND CLIENT (REACT 18 + VITE + TAILWINDCSS + NGINX)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dss-frontend
+    restart: always
+    environment:
+      VITE_API_BASE_URL: "http://localhost:5000/api/v1"
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - dss-network
+
+networks:
+  dss-network:
+    driver: bridge
+
+volumes:
+  dss_postgres_data:
+    driver: local
