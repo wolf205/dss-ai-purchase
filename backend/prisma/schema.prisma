@@ -228,7 +228,7 @@ model Inventory {
   productSku        String    @id @map("product_sku") @db.VarChar(50)
   onHand            Int       @default(0) @map("on_hand")
   onOrder           Int       @default(0) @map("on_order")
-  calculatedIp      Int?      @default(dbgenerated("(on_hand + on_order)")) @map("calculated_ip")
+  calculatedIp      Int       @default(0) @map("calculated_ip")
   safetyStock       Int       @default(0) @map("safety_stock")
   reorderPoint      Int       @default(0) @map("reorder_point")
   maxStock          Int       @default(0) @map("max_stock")

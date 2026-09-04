@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS inventory (
     product_sku VARCHAR(50) PRIMARY KEY REFERENCES products(sku) ON DELETE CASCADE,
     on_hand INTEGER NOT NULL DEFAULT 0,
     on_order INTEGER NOT NULL DEFAULT 0,
-    calculated_ip INTEGER GENERATED ALWAYS AS (on_hand + on_order) STORED,
+    calculated_ip INTEGER NOT NULL DEFAULT 0,
     safety_stock INTEGER NOT NULL DEFAULT 0,
     reorder_point INTEGER NOT NULL DEFAULT 0,
     max_stock INTEGER NOT NULL DEFAULT 0,
@@ -221,6 +221,20 @@ CREATE TRIGGER set_timestamp_inventory
 BEFORE UPDATE ON inventory
 FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
+
+-- Trigger tự động cập nhật vị trí tồn kho IP = On-Hand + On-Order (BR-001)
+CREATE OR REPLACE FUNCTION trigger_calculate_inventory_ip()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.calculated_ip = NEW.on_hand + NEW.on_order;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER calculate_inventory_ip
+BEFORE INSERT OR UPDATE ON inventory
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_calculate_inventory_ip();
 
 -- Bảng 6: inventory_snapshots (Nhật ký điều chỉnh kiểm kê tồn kho)
 CREATE TABLE IF NOT EXISTS inventory_snapshots (
@@ -558,12 +572,12 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_user_date ON audit_logs(user_id, creat
 -- 11. KHỞI TẠO DỮ LIỆU BAN ĐẦU (SEED DATA MẪU CHUẨN)
 -- =============================================================================
 
--- Khởi tạo tài khoản Quản trị viên mặc định (Mật khẩu mặc định: Admin@123456)
+-- Khởi tạo tài khoản Quản trị viên mặc định (Mật khẩu mặc định: Admin@123)
 INSERT INTO users (id, username, password_hash, full_name, email, role, is_active, must_change_password)
 VALUES (
     'a0000000-0000-0000-0000-000000000001',
     'admin',
-    '$2a$12$e8rXvA4sJ9iVnZqWqjG2MeUf0Q0F6m2Wk/s7mP2F.zZ9xY8V.8nqy', -- Bcrypt hash
+    '$2a$10$7BBUnxxzBS3XR/m0jKNXuO0pp08uDuNWdeV0bKUfL2WBkbyRCa/mu', -- Bcrypt hash cho Admin@123
     'Quản Trị Viên Hệ Thống',
     'admin@dss-purchase.local',
     'ADMIN',

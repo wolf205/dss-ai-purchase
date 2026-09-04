@@ -4,13 +4,15 @@
   "description": "DSS AI Purchase Core Backend Service (Clean Architecture + Express + Prisma)",
   "main": "dist/api/server.js",
   "scripts": {
-    "build": "rimraf dist && tsc && tsc-alias",
+    "build": "rimraf dist && tsc && tsc-alias && npm run build:seed",
+    "build:seed": "tsc prisma/seed.ts --outDir dist/prisma --target ES2022 --module CommonJS --moduleResolution node --skipLibCheck --esModuleInterop",
     "start": "node dist/api/server.js",
     "dev": "nodemon --watch src -e ts --exec ts-node -r tsconfig-paths/register src/api/server.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
+    "prisma:seed": "node dist/prisma/seed.js",
+    "prisma:seed:dev": "ts-node -r tsconfig-paths/register prisma/seed.ts"
   },
   "prisma": {
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
@@ -24,6 +26,7 @@
     "express": "^4.19.2",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "prisma": "^5.20.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -33,7 +36,6 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.11.24",
     "nodemon": "^3.1.0",
-    "prisma": "^5.20.0",
     "rimraf": "^5.0.5",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.9.4",

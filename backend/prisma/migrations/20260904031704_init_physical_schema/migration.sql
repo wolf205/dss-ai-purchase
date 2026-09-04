@@ -109,7 +109,7 @@ CREATE TABLE "inventory" (
     "product_sku" VARCHAR(50) NOT NULL,
     "on_hand" INTEGER NOT NULL DEFAULT 0,
     "on_order" INTEGER NOT NULL DEFAULT 0,
-    "calculated_ip" INTEGER GENERATED ALWAYS AS ("on_hand" + "on_order") STORED,
+    "calculated_ip" INTEGER NOT NULL DEFAULT 0,
     "safety_stock" INTEGER NOT NULL DEFAULT 0,
     "reorder_point" INTEGER NOT NULL DEFAULT 0,
     "max_stock" INTEGER NOT NULL DEFAULT 0,
@@ -634,4 +634,15 @@ CREATE TRIGGER set_timestamp_inventory BEFORE UPDATE ON "inventory" FOR EACH ROW
 CREATE TRIGGER set_timestamp_cold_start_inputs BEFORE UPDATE ON "cold_start_inputs" FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 CREATE TRIGGER set_timestamp_weights BEFORE UPDATE ON "supplier_evaluation_weights" FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 CREATE TRIGGER set_timestamp_purchase_orders BEFORE UPDATE ON "purchase_orders" FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+
+-- Trigger for calculated_ip (IP = On-Hand + On-Order)
+CREATE OR REPLACE FUNCTION trigger_calculate_inventory_ip()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.calculated_ip = NEW.on_hand + NEW.on_order;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER calculate_inventory_ip BEFORE INSERT OR UPDATE ON "inventory" FOR EACH ROW EXECUTE PROCEDURE trigger_calculate_inventory_ip();
 
