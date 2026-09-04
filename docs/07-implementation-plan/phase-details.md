@@ -58,6 +58,7 @@
 * [`ai-service-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/ai-service-architecture.md)
 * [`internal-ai-contracts.md`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/internal-ai-contracts.md)
 * [`business-rules.md (BR-006, BR-007, BR-008)`](file:///c:/my_project/dss-ai-purchase/docs/02-requirements/business-rules.md)
+* Đặc tả chi tiết 4 Milestones: [`phase-1-milestones.md`](file:///d:/projects/dss-ai-purchase/docs/07-implementation-plan/phase-1-milestones.md)
 
 ### 2.3. Cấu Trúc Thư Mục & Deliverables (`/ai-service`)
 ```
