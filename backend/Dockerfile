@@ -11,7 +11,7 @@ RUN apk add --no-cache openssl libc6-compat
 # Cài đặt toàn bộ dependencies (bao gồm devDependencies để compile)
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci --no-audit --no-fund
+RUN npm install --no-audit --no-fund
 
 # Biến môi trường build-time để parse schema không bị lỗi thiếu DATABASE_URL (Bug 1)
 ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/dss_ai_purchase_db?schema=public"
@@ -34,7 +34,7 @@ RUN apk add --no-cache openssl libc6-compat
 
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci --omit=dev --no-audit --no-fund
+RUN npm install --omit=dev --no-audit --no-fund
 
 # Copy generated prisma client từ stage builder sang
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
