@@ -1,104 +1,228 @@
 # HƯỚNG DẪN DÀNH CHO AI AGENT (GEMINI CLI ASSISTANT)
 ## DỰ ÁN: HỆ THỐNG HỖ TRỢ RA QUYẾT ĐỊNH MUA HÀNG TÍCH HỢP AI (DSS AI PURCHASE)
+### HỢP ĐỒNG KIẾN TRÚC & QUY TẮC PHÁT TRIỂN TOÀN DỰ ÁN (STRICT ARCHITECTURAL CONTRACT)
 
-> **Mục tiêu:** Tài liệu này đóng vai trò là "Kim chỉ nam" (Single Source of Guidance) cho AI Agent trong suốt quá trình phát triển mã nguồn, kiểm thử, refactor và bảo trì hệ thống. Mọi phản hồi và hành động của Agent **BẮT BUỘC** phải tuân thủ nghiêm ngặt các nguyên tắc, bảng điều hướng tài liệu và quy trình kiểm tra dưới đây.
-
----
-
-## 1. TRIẾT LÝ PHÁT TRIỂN & CAM KẾT CHẤT LƯỢNG (CORE ETHOS)
-
-1. **Tuân thủ tài liệu tuyệt đối (Zero Deviation):**
-   * Toàn bộ kiến trúc, bảng cơ sở dữ liệu, tên trường, công thức toán học, hợp đồng API và mã lỗi đã được thiết kế hoàn chỉnh trong thư mục `docs/`.
-   * **CẤM** tự ý thay đổi tên trường, thêm bớt bảng, thay đổi công thức toán, hoặc tự bịa ra các API endpoint không có trong đặc tả.
-2. **Nguyên tắc Clean Architecture & Tách Biệt Trách Nhiệm:**
-   * **Domain Layer:** Là trung tâm bất biến, không phụ thuộc vào Express, Prisma, hay bất kỳ thư viện ngoài nào. Mọi nghiệp vụ toán học ($SS, ROP, Q_{raw}$, ABC-XYZ, OTIF) phải nằm trọn vẹn trong Domain Services.
-   * **Application Layer:** Điều phối Use Cases, nhận Request DTO, gọi Domain Services/Repositories, trả về Response DTO.
-   * **Infrastructure Layer:** Triển khai Repository interfaces bằng Prisma, kết nối AI Service qua HTTP Client, xử lý bảo mật (Bcrypt/JWT), đọc file Excel/CSV.
-   * **Presentation / API Layer:** Tiếp nhận HTTP Request, validate dữ liệu đầu vào bằng Zod, gọi Use Case, chuẩn hóa response Envelope.
-3. **Stateless AI Service:**
-   * Dịch vụ AI (Python FastAPI) chỉ thực hiện tính toán số học thuần túy (Compute Engine), **tuyệt đối không kết nối trực tiếp đến PostgreSQL**. Mọi dữ liệu lịch sử bán hàng phải được Backend truyền sang qua HTTP payload.
-4. **Bảo Toàn Tính Toàn Vẹn Dữ Liệu (ACID & Anti-Duplicate):**
-   * Mọi thao tác ghi nhiều bảng (ví dụ: `UC-014` Nghiệm thu hàng & Cập nhật tồn kho) bắt buộc bọc trong `prisma.$transaction`.
-   * Vị trí tồn kho $IP = \text{On-Hand} + \text{On-Order}$ phải được duy trì chính xác để chống đặt hàng trùng lặp (`BR-001`).
+> **Mục tiêu tối thượng:** Tài liệu này đóng vai trò là "Bản Hiến Pháp Kỹ Thuật" và Hợp Đồng Bắt Buộc (Strict Architectural Contract) cho AI Agent trong suốt vòng đời dự án (lập trình, kiểm thử, refactor, bảo trì).
+> Mọi chỉ thị trong tài liệu này có tính chất **Cưỡng Chế Tuyệt Đối (Zero Deviation)**. AI Agent **KHÔNG CÓ QUYỀN** tự ý suy diễn, hạ thấp tiêu chuẩn hoặc thực hiện các giải pháp tình thế ngắn hạn làm tổn hại đến tính toàn vẹn của hệ thống.
 
 ---
 
-## 2. QUY TRÌNH 5 GIAI ĐOẠN LÀM VIỆC NGHIÊM NGẶT (STRICT 5-STAGE PROTOCOL)
+## 1. TRIẾT LÝ PHÁT TRIỂN CỐT LÕI (CORE ETHOS)
 
-Khi nhận bất kỳ yêu cầu lập trình (Phase, Use Case, Module hoặc Task sửa lỗi), Agent **BẮT BUỘC** tuân thủ tuần tự 5 giai đoạn:
+1. **Tuân thủ tài liệu đặc tả tuyệt đối (Specification As Law):**
+   * Toàn bộ kiến trúc, cơ sở dữ liệu, tên trường, công thức toán học, hợp đồng API và mã lỗi đã được quy định chi tiết trong thư mục `docs/`.
+   * **CẤM** tự ý thay đổi tên trường, thêm bớt bảng, biến tấu công thức toán, hoặc tự bịa ra các API endpoint ngoài đặc tả.
+2. **Nguyên tắc Clean Architecture Bất Biến (The Dependency Invariant):**
+   * Chiều phụ thuộc của mã nguồn **CHỈ ĐƯỢC PHÉP HƯỚNG VÀO TRONG** (Inward Dependency): `API / Presentation` $\rightarrow$ `Infrastructure` $\rightarrow$ `Application` $\rightarrow$ `Domain`.
+   * Tầng bên trong **TUYỆT ĐỐI KHÔNG BIẾT VÀ KHÔNG PHỤ THUỘC** vào tầng bên ngoài.
+3. **Stateless AI Service (Compute Engine Pure):**
+   * Dịch vụ AI (Python FastAPI) chỉ đóng vai trò là Engine tính toán số học thuần túy. **Tuyệt đối không kết nối trực tiếp đến PostgreSQL**.
+   * Mọi dữ liệu lịch sử bán hàng và tham số phải được Backend cung cấp qua HTTP payload.
+4. **Bảo Toàn Tính Toàn Vẹn Dữ Liệu & Giao Dịch ACID (`BR-001`, `BR-018`):**
+   * Mọi tác vụ ghi từ 2 bảng trở lên, hoặc thay đổi trạng thái kèm biến động tồn kho/lịch sử bắt buộc bọc trong transaction (`IUnitOfWork` hoặc `prisma.$transaction`).
+   * Vị trí tồn kho $IP = \text{On-Hand} + \text{On-Order}$ phải duy trì tính toàn vẹn tuyệt đối để chống đặt hàng trùng lặp.
 
-```mermaid
-flowchart LR
-    A["1. Phân Tích & Lập Kế Hoạch"] --> Gate{🛑 User Duyệt?}
-    Gate -- Chưa duyệt --> A
-    Gate -- Đồng ý --> B["2. Triển Khai Cuốn Chiếu"]
-    B --> C["3. Đối Chiếu Khớp Nối Chéo"]
-    C --> D["4. Rà Soát Bug Ngầm & Thử Nghiệm Biên"]
-    D --> E["5. Nghiệm Thu & Bàn Giao"]
+---
+
+## 2. HỢP ĐỒNG RANH GIỚI KIẾN TRÚC & PHỤ THUỘC (ARCHITECTURAL BOUNDARIES CONTRACT)
+
+Mọi tệp mã nguồn trong dự án bắt buộc tuân thủ hợp đồng ranh giới 4 tầng dưới đây:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        API / PRESENTATION LAYER                        │
+│   (Express, Controllers, Middlewares, Routes, Zod Schemas, HTTP Codes) │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ (Calls Use Cases & Maps DTOs)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                           APPLICATION LAYER                            │
+│   (Use Cases, Application DTOs, Ports/Interfaces, App Exceptions)      │
+└───────────────────┬───────────────────────────────┬────────────────────┘
+                    │ (Implements Ports)            │ (Orchestrates)
+                    ▼                               ▼
+┌──────────────────────────────────────┐  ┌──────────────────────────────┐
+│         INFRASTRUCTURE LAYER         │  │         DOMAIN LAYER         │
+│ (Prisma, Repositories, Security/Auth,│  │ (Entities, Value Objects,    │
+│  External Clients, File Parsers)     │  │  Domain Services, Invariants,│
+│                                      │  │  Domain Repos, Pure Errors)  │
+└──────────────────────────────────────┘  └──────────────────────────────┘
 ```
 
-### Giai đoạn 1: Phân Tích Kỹ Thuật & Lập Kế Hoạch (Planning & Approval Gate)
-1. **Đọc tài liệu mục tiêu:** Tra cứu Bảng Điều Hướng (Section 4 & 5), đọc chính xác các file nghiệp vụ, Use Case và kiến trúc liên quan.
-2. **Chia nhỏ bài toán (Chunking):**
-   * Nếu Phase hoặc Task có phạm vi rộng (nhiều bảng, nhiều layer, hoặc cả frontend/backend), **BẮT BUỘC** chia nhỏ thành các Milestone/Sub-task tuần tự, độc lập và khả thi.
-   * Xác định rõ ràng Definition of Done (DoD) cho từng phần nhỏ.
-3. **Trình bày kế hoạch hành động:**
-   * Liệt kê cụ thể danh sách file cần tạo mới `[NEW]` hoặc chỉnh sửa `[MODIFY]`.
-   * Mô tả ngắn gọn logic cốt lõi sẽ triển khai cho từng file.
-   * Nêu rõ các rủi ro kỹ thuật, điểm nghẽn hoặc giả định (nếu có).
-4. 🛑 **CỔNG KIỂM SOÁT BẮT BUỘC (APPROVAL GATE):**
-   * **DỪNG LẠI và CHỜ USER DUYỆT KẾ HOẠCH.**
-   * **CẤM** tự ý viết code khi chưa có sự xác nhận ("Đồng ý", "Duyệt", "Proceed", ...) từ người dùng.
+### 2.1. Ma Trận Quyền Hạn & Cấm Phụ Thuộc Chéo (Layer Access Matrix)
 
-### Giai đoạn 2: Triển Khai Cuốn Chiếu Từng Phần (Incremental Implementation)
-1. Tiến hành viết code tuần tự theo từng Milestone/Sub-task đã được duyệt.
-2. Không sửa hàng loạt file ở các tầng khác nhau cùng lúc nếu chưa hoàn thành logic tầng nền tảng.
-3. Tuân thủ nghiêm ngặt Clean Architecture: Domain $\rightarrow$ Application $\rightarrow$ Infrastructure $\rightarrow$ Presentation.
+| Tầng (Layer) | Được Phép Import / Phụ Thuộc | TUYỆT ĐỐI CẤM Import / Phụ Thuộc |
+| :--- | :--- | :--- |
+| **Domain** | Chỉ dùng kiểu dữ liệu nguyên bản của TypeScript. | **CẤM 100%**: Application, Infrastructure, Presentation, Express, Prisma, các thư viện runtime bên ngoài (HTTP, Crypto, File, DB drivers), mã trạng thái HTTP. |
+| **Application** | `Domain`, các Interfaces/Ports của tầng mình, DTOs, Application Exceptions. | **CẤM 100%**: Infrastructure (Prisma, Axios client cụ thể), Presentation (Express req/res, HTTP codes), các thư viện môi trường cụ thể (phải trừu tượng hóa qua Ports). |
+| **Infrastructure**| `Domain`, `Application` (để triển khai Ports/Interfaces), các thư viện bên thứ ba chuyên trách (PrismaClient, Bcrypt, Axios, ExcelJS). | **CẤM 100%**: Presentation Layer (Controllers, Express req/res, Route Handlers). |
+| **Presentation** | `Domain`, `Application` (Use Cases, DTOs, Exceptions), Zod, Express framework, Infrastructure (chỉ để khởi tạo Dependency Injection cho Use Cases tại Composition Root). | **CẤM 100%**: Thực thi truy vấn cơ sở dữ liệu hoặc logic nghiệp vụ trực tiếp trong Controller. Mọi hành động bắt buộc phải ủy quyền cho Use Cases. |
 
-### Giai đoạn 3: Kiểm Tra Khớp Nối & Tính Nhất Quán Chéo (Cross-Component Consistency)
-Sau khi viết code, **TUYỆT ĐỐI KHÔNG CHỈ DỪNG LẠI Ở VIỆC CODE CHẠY ĐƯỢC / KHÔNG BÁO LỖI BIÊN DỊCH**. Agent bắt buộc phải rà soát đối chiếu chéo giữa các tầng:
-1. **Database $\leftrightarrow$ Prisma $\leftrightarrow$ Domain:**
-   * Tên cột SQL, kiểu dữ liệu, ràng buộc check trong `docs/04-data-model/physical-schema.sql` $\equiv$ Model trong `backend/prisma/schema.prisma` $\equiv$ Domain Entity $\equiv$ DTO.
-   * Các cột tính toán tự động (như `calculated_ip`) hoặc trigger database phải đồng bộ 100% với logic code backend (`BR-001`).
-2. **Backend $\leftrightarrow$ Frontend:**
-   * DTO / Zod Schema trả về từ Backend $\equiv$ TypeScript Interface / Type của Frontend.
-   * Định dạng dữ liệu thời gian (ISO 8601 UTC), định dạng tiền tệ, mã trạng thái đơn hàng và mã lỗi.
-3. **Backend $\leftrightarrow$ AI Service Python:**
-   * Khớp nối hợp đồng HTTP POST: Định dạng mảng lịch sử bán hàng, kiểu float/int, cấu trúc JSON trả về (`wape`, `mae`, `confidence_interval`).
-4. **Trạng Thái Nghiệp Vụ (State Machine Integrity):**
-   * Máy trạng thái đơn hàng (`DRAFT` $\rightarrow$ `ORDERED` $\rightarrow$ `RECEIVED` / `CANCELLED`) được bảo vệ chặt chẽ, không có đường tắt hoặc lỗ hổng trạng thái (`BR-025`).
-5. **Docker & Cấu Hình Môi Trường:**
-   * Mọi biến môi trường mới đều phải có mặt trong `.env.example`, `docker-compose.yml` và build-time arguments trong các `Dockerfile`.
+### 2.2. Nguyên Tắc Độc Lập Môi Trường (Runtime & Technology Independence)
 
-### Giai đoạn 4: Rà Soát Bug Ngầm & Thử Nghiệm Biên (Deep Audit & Edge-Case Inspection)
-Chủ động phân tích logic để triệt tiêu các bug ngầm trước khi bàn giao:
-* **Giao dịch & ACID (`BR-018`):** Các tác vụ ghi nhiều bảng (nhận hàng, chốt PO) đã bọc đầy đủ trong `prisma.$transaction` chưa? Có nguy cơ race condition hay deadlock không?
-* **Phép toán & Xử lý số học:** Kiểm tra nguy cơ chia cho 0 (division by zero khi mẫu số bằng 0 trong tính WAPE, OTIF, % biến động), xử lý làm tròn MOQ/Pack Size (`BR-009`, `BR-010`), làm tròn số âm hoặc số thực.
-* **Nullability & Undefined:** Kiểm tra an toàn khi mảng rỗng, dữ liệu thiếu, sản phẩm chưa từng có lịch sử bán (Cold Start `UC-008`).
-* **Fallback & Timeout (`BR-007`):** AI Service bị timeout (> 4s) hoặc trả về lỗi thì cơ chế SMA-7 fallback cục bộ có kích hoạt an toàn và ghi log không?
+1. **Không rò rỉ cơ chế môi trường vào Core Logic:**
+   * Tầng `Domain` và `Application` không được trực tiếp phụ thuộc vào các API riêng biệt của môi trường runtime (Node.js built-ins, OS-specific APIs, Database drivers).
+   * Mọi nhu cầu tương tác với môi trường bên ngoài (ví dụ: băm mật khẩu, mã hóa token, gọi API AI, gửi email, đọc file, truy cập hệ thống file) **BẮT BUỘC** phải được định nghĩa dưới dạng **Port (Interface)** tại `application/ports/` và triển khai cụ thể tại `infrastructure/`.
+2. **Chiến lược quản lý định danh thực thể (Entity Identity Strategy):**
+   * Chiến lược định danh thực thể (ID generation) phải tuân thủ nghiêm ngặt theo thiết kế cơ sở dữ liệu (`docs/04-data-model/physical-schema.sql`).
+   * Nếu cơ sở dữ liệu đảm nhiệm việc sinh ID (`gen_random_uuid()` / `@default(uuid())`), Domain Entity cho phép `id?: string` là trường tùy chọn khi khởi tạo mới. Tầng Application **tuyệt đối không tự ý gọi các thư viện runtime để sinh ID** nếu không được quy định qua Port chuyên trách.
 
-### Giai đoạn 5: Nghiệm Thu & Bàn Giao (Sign-Off & Verification)
-1. Chạy toàn bộ Unit Tests, Integration Tests và Linting.
-2. Kiểm tra lại toàn bộ Pre-submission Checklist (Section 7).
-3. Báo cáo kết quả rõ ràng, minh bạch cho người dùng.
+### 2.3. Hợp Đồng Phân Cấp Xử Lý Lỗi (Two-Tier Exception Architecture)
+
+Hệ thống phân tách lỗi nghiêm ngặt thành 2 cấp độ, cấm lẫn lộn trách nhiệm:
+
+#### Cấp độ 1: Domain Exceptions (`backend/src/domain/exceptions/`)
+* **Bản chất:** Đại diện cho vi phạm quy tắc bất biến nghiệp vụ cốt lõi (Business Invariants).
+* **Quy tắc bắt buộc:**
+  * Kế thừa từ `DomainException` (chỉ chứa `message`, `code = 'BUSINESS_RULE_VIOLATION'`, `details`).
+  * **TUYỆT ĐỐI KHÔNG CHỨA HTTP STATUS CODE** (không `400`, `404`, `422`, không `statusCode` property).
+  * Chỉ được ném ra từ Domain Entities, Value Objects hoặc Domain Services khi một quy tắc toán học/kinh doanh bị vi phạm (ví dụ: `InvalidOrderStateException`, `InvalidWeightDistributionException`, `OutOfStockException`).
+
+#### Cấp độ 2: Application Exceptions (`backend/src/application/exceptions/`)
+* **Bản chất:** Đại diện cho các lỗi điều phối luồng ứng dụng, tra cứu tài nguyên hoặc kiểm soát truy cập.
+* **Quy tắc bắt buộc:**
+  * Kế thừa từ `ApplicationException` (chỉ chứa `message`, `code`, `details`).
+  * Không chứa mã HTTP trực tiếp trong class.
+  * Các loại ngoại lệ chuẩn của tầng:
+    * `EntityNotFoundException` (Mã: `RESOURCE_NOT_FOUND`)
+    * `DuplicateResourceException` (Mã: `DUPLICATE_RESOURCE`)
+    * `ValidationException` (Mã: `VALIDATION_ERROR`)
+    * `UnauthorizedException` (Mã: `INVALID_CREDENTIALS` / `TOKEN_EXPIRED`)
+    * `ForbiddenException` (Mã: `FORBIDDEN`)
+
+#### Ánh Xạ Ngoại Lệ Sang HTTP (Presentation Layer Exclusive)
+* Tệp `backend/src/api/middlewares/errorMiddleware.ts` là **NƠI DUY NHẤT** trong toàn bộ hệ thống được phép biết về mã trạng thái HTTP:
+  * `ApplicationException (RESOURCE_NOT_FOUND)` $\rightarrow$ **404 Not Found**
+  * `ApplicationException (DUPLICATE_RESOURCE)` $\rightarrow$ **409 Conflict**
+  * `ApplicationException (INVALID_CREDENTIALS)` $\rightarrow$ **401 Unauthorized**
+  * `ApplicationException (FORBIDDEN)` $\rightarrow$ **403 Forbidden**
+  * `ApplicationException (VALIDATION_ERROR)` hoặc `ZodError` $\rightarrow$ **400 Bad Request**
+  * `DomainException` $\rightarrow$ **422 Unprocessable Entity** (hoặc `400` tùy cấu hình Envelope)
+  * Lỗi không xác định $\rightarrow$ **500 Internal Server Error**
+* Tất cả phản hồi lỗi phải đóng gói theo chuẩn Envelope:
+  ```json
+  {
+    "success": false,
+    "error": {
+      "code": "RESOURCE_NOT_FOUND",
+      "message": "Không tìm thấy sản phẩm với mã SKU: SKU-12345",
+      "details": []
+    },
+    "timestamp": "2026-09-05T11:00:00.000Z"
+  }
+  ```
 
 ---
 
-## 3. CẤU TRÚC THƯ MỤC CHUẨN CỦA DỰ ÁN (CANONICAL DIRECTORY TREE)
+## 3. HỢP ĐỒNG TOÀN VẸN DỮ LIỆU, GIAO DỊCH & DỊCH VỤ AI
+
+### 3.1. Tính Toàn Vẹn Dữ Liệu & Đồng Bộ Schema 4 Tầng
+1. **Single Source of Truth:**
+   * Tệp DDL [`docs/04-data-model/physical-schema.sql`](docs/04-data-model/physical-schema.sql) và Từ điển dữ liệu [`docs/04-data-model/data-dictionary.md`](docs/04-data-model/data-dictionary.md) là căn cứ tối cao.
+2. **Tính Nhất Quán Tuyệt Đối (Quadruple Consistency):**
+   * Bắt buộc khớp nối 1:1 giữa:
+     `Tên cột SQL & Check Constraints` $\equiv$ `Prisma Model` $\equiv$ `Domain Entity Properties` $\equiv$ `DTO / Zod Schemas`.
+   * Cấm tự ý đổi kiểu dữ liệu (ví dụ: `DECIMAL(12,2)` sang `FLOAT` gây sai số tiền tệ).
+
+### 3.2. Hợp Đồng Giao Dịch ACID (Transaction Boundary)
+* Bất kỳ Use Case nào thực hiện thao tác ghi trên nhiều bảng, hoặc cập nhật trạng thái có liên đới đến số liệu kho (như `UC-012` Tạo PO, `UC-013` Hủy PO, `UC-014` Nhận hàng & cập nhật tồn kho) **BẮT BUỘC** phải được bọc trong giao dịch nguyên tử (`IUnitOfWork` hoặc `prisma.$transaction`).
+* Cấm thực hiện các truy vấn ghi độc lập nối tiếp nhau mà không có cơ chế rollback khi xảy ra lỗi giữa chừng.
+
+### 3.3. Hợp Đồng Dịch Vụ AI (Stateless Compute Contract)
+* Dịch vụ AI (Python FastAPI) hoàn toàn không có trạng thái và không kết nối cơ sở dữ liệu.
+* **Cơ chế Fallback bắt buộc (`BR-007`):**
+  * Mọi lời gọi sang AI Service phải có cấu hình Timeout tối đa 4 giây.
+  * Nếu AI Service bị timeout, gặp lỗi kết nối (5xx/network error), hoặc trả về kết quả có sai số WAPE > 40%, Backend **BẮT BUỘC** tự động kích hoạt thuật toán Fallback nội bộ (SMA-7: Trung bình trượt 7 ngày) và ghi rõ nguồn tính toán trong log/metadata.
+  * Hệ thống không được phép văng lỗi 500 ra người dùng chỉ vì dịch vụ AI tạm thời mất kết nối.
+
+---
+
+## 4. QUY TRÌNH 5 GIAI ĐOẠN PHÁT TRIỂN BẮT BUỘC (STRICT 5-STAGE PROTOCOL)
+
+Khi nhận bất kỳ yêu cầu lập trình, Agent tuân thủ tuần tự theo luồng phân loại và kiểm soát dưới đây:
+
+```mermaid
+flowchart TD
+    A["Nhận Yêu Cầu Tác Vụ"] --> Check{"Phạm Vi Tác Vụ?<br>(Major Scope vs Minor Scope)"}
+    Check -- "Tác vụ Trọng yếu (Major)" --> Plan["1. Phân Tích & Kế Hoạch"]
+    Plan --> Gate{🛑 User Duyệt?}
+    Gate -- "Chưa duyệt" --> Plan
+    Gate -- "Đồng ý" --> Exec["2. Triển Khai Cuốn Chiếu"]
+    Check -- "Tác vụ Tinh gọn (Minor)" --> FastTrack["⚡ Fast-Track (Thực thi trực tiếp)"]
+    FastTrack --> Exec
+    Exec --> Consistency["3. Đối Chiếu Khớp Nối Chéo"]
+    Consistency --> Audit["4. Rà Soát Bug Ngầm & Thử Nghiệm Biên"]
+    Audit --> Verify["5. Nghiệm Thu Bằng Lệnh Cơ Học"]
+```
+
+### Giai đoạn 1: Phân Loại Tác Vụ & Cổng Duyệt Kế Hoạch (Planning & Gate Condition)
+
+Để cân bằng giữa **tính kỷ luật kiến trúc** và **tốc độ phát triển**, Agent áp dụng phân loại tác vụ theo điều kiện sau:
+
+#### Nhóm 1: Tác Vụ Trọng Yếu (Major Scope) $\rightarrow$ 🛑 CỔNG DUYỆT BẮT BUỘC (Hard Approval Gate)
+* **Phạm vi áp dụng:**
+  1. Triển khai Use Case mới hoặc Phase mới.
+  2. Thay đổi Database Schema / Migrations / DDL / Prisma Model.
+  3. Thay đổi hợp đồng API (Thêm/sửa URL Endpoint, Zod Schema request/response, HTTP status code).
+  4. Thay đổi luồng nghiệp vụ cốt lõi, công thức tính toán (`BR-001` $\rightarrow$ `BR-026`), hoặc State Machine đơn hàng.
+  5. Tái cấu trúc (Refactor) diện rộng ảnh hưởng từ 2 tầng kiến trúc trở lên.
+* **Quy trình bắt buộc:**
+  1. **Đọc tài liệu mục tiêu:** Tra cứu Bảng Điều Hướng (Section 6 & 7), đọc kỹ file đặc tả liên quan.
+  2. **Lập Ma trận truy xuất (Traceability Matrix):** `Yêu Cầu / Use Case` $\rightarrow$ `Domain Entity / Service` $\rightarrow$ `Use Case / DTO` $\rightarrow$ `Prisma / Repo` $\rightarrow$ `Controller / API`.
+  3. **Trình bày kế hoạch hành động:** Liệt kê file `[NEW]` / `[MODIFY]` và mô tả logic cốt lõi.
+  4. 🛑 **DỪNG LẠI CHỜ USER DUYỆT:** CẤM tự ý sửa code khi chưa có sự xác nhận ("Đồng ý", "Duyệt", "Proceed", ...) từ người dùng.
+
+#### Nhóm 2: Tác Vụ Tinh Gọn (Minor Scope) $\rightarrow$ ⚡ ĐƯỢC PHÉP BỎ QUA GATE (Fast-Track)
+* **Phạm vi áp dụng:**
+  1. Sửa bug nhỏ cục bộ (phạm vi 1 file / 1 hàm, không đổi interface hoặc hợp đồng dữ liệu bên ngoài).
+  2. Tinh chỉnh thông báo lỗi (Error messages), câu chữ hiển thị tiếng Việt, cập nhật comments / docstrings.
+  3. Bổ sung hoặc cập nhật Unit Tests / Integration Tests cho logic đã có.
+  4. Sửa lỗi cú pháp, lint warnings, hoặc lỗi ép kiểu TypeScript không làm đổi hành vi hệ thống.
+* **Quy trình tinh gọn:**
+  * Được phép triển khai trực tiếp mã nguồn mà **không cần dừng lại chờ duyệt kế hoạch**, giúp triệt tiêu ma sát và đẩy nhanh tiến độ đồ án.
+  * **Ràng buộc an toàn:** Dù bỏ qua Gate ở Giai đoạn 1, tác vụ vẫn **bắt buộc tuân thủ 100%** Hợp đồng ranh giới kiến trúc (Section 2) và phải vượt qua Cổng nghiệm thu cơ học (Section 9) trước khi báo cáo hoàn thành.
+
+### Giai đoạn 2: Triển Khai Cuốn Chiếu Theo Chiều Sâu (Inside-Out Implementation)
+1. Viết code tuần tự theo chiều từ trong ra ngoài:
+   * **Bước 1:** `Domain` (Entities, Value Objects, Domain Services, Repositories Interfaces, Domain Exceptions).
+   * **Bước 2:** `Application` (Ports, DTOs, Use Cases, Application Exceptions).
+   * **Bước 3:** `Infrastructure` (Repository Implementations, Database Adapters, Security Services).
+   * **Bước 4:** `Presentation` (Zod Schemas, Controllers, Middlewares, Routes).
+2. Không triển khai tầng bên ngoài khi tầng bên trong chưa hoàn thiện và chưa thỏa mãn tính bất biến.
+
+### Giai đoạn 3: Kiểm Tra Khớp Nối & Nhất Quán Chéo (Cross-Layer Consistency)
+* Đối chiếu tên biến, tên cột, kiểu dữ liệu giữa Schema DB, Prisma Model, Domain Entity và API DTO.
+* Đảm bảo tính toán tồn kho theo đúng công thức $IP = \text{On-Hand} + \text{On-Order}$ (`BR-001`).
+* Đảm bảo máy trạng thái đơn hàng tuân thủ quy tắc chuyển trạng thái (`BR-025`).
+
+### Giai đoạn 4: Rà Soát Bug Ngầm & Thử Nghiệm Biên (Deep Audit & Edge-Case Inspection)
+* **Số học & Phép chia:** Kiểm soát triệt để nguy cơ chia cho 0 (mẫu số = 0 khi tính WAPE, OTIF, % biến động tồn kho).
+* **Làm tròn số (`BR-009`, `BR-010`):** Kiểm tra làm tròn lên theo MOQ và bội số Pack Size.
+* **Nullability & Undefined:** Kiểm tra an toàn khi mảng dữ liệu rỗng, xử lý sản phẩm mới Cold Start (`UC-008`).
+* **Tính nguyên tử:** Đảm bảo toàn bộ nghiệp vụ đa bước có transaction bảo vệ.
+
+### Giai đoạn 5: Nghiệm Thu Bằng Lệnh Cơ Học & Bàn Giao (Mechanical Verification)
+* Chạy toàn bộ các lệnh kiểm tra tự động tại Section 9.
+* Chỉ bàn giao khi toàn bộ lệnh kiểm tra trả về kết quả đạt 100%.
+
+---
+
+## 5. CẤU TRÚC THƯ MỤC CHUẨN CỦA DỰ ÁN (CANONICAL DIRECTORY TREE)
 
 Mọi mã nguồn Backend bắt buộc tuân theo cấu trúc đã quy định trong `docs/05-architecture/backend-architecture.md`:
 
 ```
 backend/src/
-├── domain/                        # TẦNG 1: DOMAIN LAYER (Pure TS, Zero Libs)
+├── domain/                        # TẦNG 1: DOMAIN LAYER (Pure TS, Zero Runtime Libs)
 │   ├── entities/                  # Product, Supplier, Inventory, PurchaseOrder, etc.
 │   ├── value-objects/             # SKU, POCode, RiskLevel, Money, WeightDistribution
 │   ├── services/                  # InventoryCalculator, ABCXYZClassifier, OrderRoundingService, SupplierScoringService
 │   ├── repositories/              # IProductRepository, ISupplierRepository, etc. (Interfaces)
-│   └── exceptions/                # DomainException, ValidationException, etc.
+│   └── exceptions/                # DomainException, OutOfStockException, InvalidOrderStateException, etc.
 ├── application/                   # TẦNG 2: APPLICATION LAYER
-│   ├── use-cases/                 # Các Use Case tương ứng theo từng module nghiệp vụ
+│   ├── use-cases/                 # Các Use Case thực thi nghiệp vụ
 │   ├── dtos/                      # Request / Response DTOs
+│   ├── exceptions/                # ApplicationException, EntityNotFoundException, DuplicateResourceException, etc.
 │   └── ports/                     # IAIForecastClient, ITokenService, IPasswordHasher, IUnitOfWork, IFileParser
 ├── infrastructure/                # TẦNG 3: INFRASTRUCTURE LAYER
 │   ├── database/                  # prisma.ts, PrismaUnitOfWork.ts
@@ -116,9 +240,9 @@ backend/src/
 
 ---
 
-## 4. BẢNG ĐIỀU HƯỚNG TÀI LIỆU THEO TÁC VỤ (TASK-TO-DOCUMENT ROUTER)
+## 6. BẢNG ĐIỀU HƯỚNG TÀI LIỆU THEO TÁC VỤ (TASK-TO-DOCUMENT ROUTER)
 
-Trước khi thực hiện một tác vụ cụ thể, Agent hãy tìm tác vụ trong bảng dưới đây và mở chính xác tài liệu được liên kết:
+Trước khi thực hiện một tác vụ cụ thể, Agent hãy mở chính xác tài liệu được liên kết:
 
 | Nhóm Tác Vụ Cần Làm | File Tài Liệu Bắt Buộc Phải Đọc Trước | Nội Dung Trọng Tâm Cần Nắm Bắt |
 | :--- | :--- | :--- |
@@ -135,9 +259,7 @@ Trước khi thực hiện một tác vụ cụ thể, Agent hãy tìm tác vụ
 
 ---
 
-## 5. BẢNG TRA CỨU USE CASE $\leftrightarrow$ FILE TÀI LIỆU CHI TIẾT
-
-Khi được yêu cầu lập trình một Use Case cụ thể, hãy mở trực tiếp file Use Case tương ứng:
+## 7. BẢNG TRA CỨU USE CASE $\leftrightarrow$ FILE TÀI LIỆU CHI TIẾT
 
 | Mã UC | Tên Use Case | Đường Dẫn Tài Liệu |
 | :--- | :--- | :--- |
@@ -161,7 +283,7 @@ Khi được yêu cầu lập trình một Use Case cụ thể, hãy mở trực
 
 ---
 
-## 6. QUY CHUẨN ĐẶT TÊN & ĐỊNH DẠNG MÃ NGUỒN (CODE CONVENTIONS)
+## 8. QUY CHUẨN ĐẶT TÊN & ĐỊNH DẠNG MÃ NGUỒN (CODE CONVENTIONS)
 
 1. **Ngôn ngữ trong mã nguồn:**
    * Mã nguồn, biến, hàm, class, comments kỹ thuật: **Tiếng Anh 100%**.
@@ -178,17 +300,34 @@ Khi được yêu cầu lập trình một Use Case cụ thể, hãy mở trực
 
 ---
 
-## 7. BẢNG KIỂM TRA TRƯỚC KHI BÀN GIAO MÃ NGUỒN (AGENT PRE-SUBMISSION CHECKLIST)
+## 9. CỔNG NGHIỆM THU CƠ HỌC BẮT BUỘC TRƯỚC KHI BÀN GIAO (MECHANICAL VERIFICATION GATE)
 
-Trước khi xác nhận hoàn thành một tác vụ viết code, Agent phải tự kiểm tra:
+Trước khi xác nhận hoàn thành bất kỳ tác vụ nào, Agent **BẮT BUỘC** phải tự chạy các lệnh kiểm tra tự động sau và báo cáo kết quả:
 
-- [ ] Tôi đã đọc đúng tài liệu được liên kết trong Section 4 & 5 chưa?
-- [ ] Kế hoạch thực hiện đã được chia nhỏ và được User duyệt trước khi viết code chưa? (Giai đoạn 1)
-- [ ] Tên các trường cơ sở dữ liệu có khớp 100% với `docs/04-data-model/data-dictionary.md` không?
-- [ ] Tôi đã đối chiếu chéo (Cross-check) giữa DB DDL, Prisma Schema, Domain Entity và Frontend Types chưa? (Giai đoạn 3)
-- [ ] Tầng Domain có hoàn toàn độc lập, không bị phụ thuộc vào Express hay Prisma không?
-- [ ] Phản hồi của API có tuân thủ đúng Envelope `{ success, data, meta, timestamp }` không?
-- [ ] Dịch vụ AI Python có giữ đúng bản chất Stateless, không kết nối trực tiếp CSDL không?
-- [ ] Thao tác nhận hàng (`UC-014`) có được bọc trong giao dịch nguyên tử (`prisma.$transaction`) không?
-- [ ] Tôi đã rà soát các bug ngầm (chia cho 0, null/undefined, làm tròn MOQ, timeout fallback) chưa? (Giai đoạn 4)
-- [ ] Có tự ý phát sinh thêm thư viện ngoài phạm vi đã thống nhất không?
+### 9.1. Quét Vi Phạm Ranh Giới Kiến Trúc (Architecture Boundary Scan)
+Chạy kiểm tra tĩnh để phát hiện mọi vi phạm chiều phụ thuộc:
+```bash
+# 1. Kiểm tra Domain Purity: Phải trả về 0 kết quả (Không chứa express, prisma, statusCode, res.status)
+git grep -i -E "(express|prisma|@prisma|statusCode|res\.status)" backend/src/domain/
+
+# 2. Kiểm tra Application Purity: Phải trả về 0 kết quả (Không chứa express, prisma, res.status)
+git grep -i -E "(express|prisma|@prisma|res\.status)" backend/src/application/
+
+# 3. Kiểm tra Presentation Boundary: Không được thực thi truy vấn Prisma trực tiếp trong Controllers
+git grep -i -E "(prisma\.[a-z]+\.(find|create|update|delete))" backend/src/api/
+```
+*Tiêu chuẩn nghiệm thu:* Toàn bộ các lệnh grep trên **BẮT BUỘC PHẢI TRẢ VỀ RỖNG (0 MATCHES)**. Nếu có bất kỳ kết quả nào, task bị coi là thất bại và phải sửa ngay.
+
+### 9.2. Kiểm Tra Biên Dịch TypeScript Khắt Khe (Strict Compilation)
+```bash
+# Biên dịch toàn bộ Backend bằng Docker (hoặc tsc --noEmit)
+docker build --target builder -t backend-test ./backend
+```
+*Tiêu chuẩn nghiệm thu:* Mã thoát `0`, không có cảnh báo hoặc lỗi biên dịch TypeScript.
+
+### 9.3. Kiểm Tra Tự Động Toàn Bộ Test Suite (Automated Tests)
+```bash
+# Chạy toàn bộ Unit & Integration tests
+docker run --rm backend-test npm test
+```
+*Tiêu chuẩn nghiệm thu:* 100% test suites và test cases phải chuyển sang màu xanh (PASS).
