@@ -3,7 +3,8 @@ import { IUserRepository } from '../../../src/domain/repositories/IUserRepositor
 import { IPasswordHasher } from '../../../src/application/ports/IPasswordHasher';
 import { ITokenService } from '../../../src/application/ports/ITokenService';
 import { User } from '../../../src/domain/entities/User';
-import { ValidationException } from '../../../src/domain/exceptions/ValidationException';
+import { UnauthorizedException } from '../../../src/application/exceptions/UnauthorizedException';
+import { ForbiddenException } from '../../../src/application/exceptions/ForbiddenException';
 
 describe('LoginUseCase (UC-015)', () => {
   let mockUserRepo: jest.Mocked<IUserRepository>;
@@ -73,7 +74,7 @@ describe('LoginUseCase (UC-015)', () => {
     });
   });
 
-  it('should throw ValidationException on invalid password', async () => {
+  it('should throw UnauthorizedException on invalid password', async () => {
     const user = new User({
       id: 'user-uuid-1',
       username: 'admin',
@@ -92,10 +93,10 @@ describe('LoginUseCase (UC-015)', () => {
 
     await expect(
       loginUseCase.execute({ username: 'admin', password: 'wrong_password' })
-    ).rejects.toThrow(ValidationException);
+    ).rejects.toThrow(UnauthorizedException);
   });
 
-  it('should throw ValidationException when user is locked (isActive: false)', async () => {
+  it('should throw ForbiddenException when user is locked (isActive: false)', async () => {
     const user = new User({
       id: 'user-uuid-1',
       username: 'admin',
@@ -113,6 +114,6 @@ describe('LoginUseCase (UC-015)', () => {
 
     await expect(
       loginUseCase.execute({ username: 'admin', password: 'password123' })
-    ).rejects.toThrow('Tài khoản đã bị khóa');
+    ).rejects.toThrow(ForbiddenException);
   });
 });

@@ -2,7 +2,11 @@ import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import { IPasswordHasher } from '../../ports/IPasswordHasher';
 import { ITokenService } from '../../ports/ITokenService';
 import { LoginRequestDTO, LoginResponseDTO } from '../../dtos/AuthDTO';
-import { ValidationException } from '../../../domain/exceptions/ValidationException';
+import {
+  ValidationException,
+  UnauthorizedException,
+  ForbiddenException,
+} from '../../exceptions';
 
 export class LoginUseCase {
   constructor(
@@ -18,16 +22,16 @@ export class LoginUseCase {
 
     const user = await this.userRepository.findByUsername(dto.username.trim());
     if (!user) {
-      throw new ValidationException('Tài khoản hoặc mật khẩu không chính xác');
+      throw new UnauthorizedException('Tài khoản hoặc mật khẩu không chính xác', 'INVALID_CREDENTIALS');
     }
 
     if (!user.isActive) {
-      throw new ValidationException('Tài khoản đã bị khóa. Vui lòng liên hệ Quản trị viên');
+      throw new ForbiddenException('Tài khoản đã bị khóa. Vui lòng liên hệ Quản trị viên', 'ACCOUNT_LOCKED');
     }
 
     const isPasswordValid = await this.passwordHasher.compare(dto.password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new ValidationException('Tài khoản hoặc mật khẩu không chính xác');
+      throw new UnauthorizedException('Tài khoản hoặc mật khẩu không chính xác', 'INVALID_CREDENTIALS');
     }
 
     // Record login timestamp
@@ -36,7 +40,7 @@ export class LoginUseCase {
 
     // Generate JWT Token Pair (Access 15m, Refresh 7d)
     const tokenPair = this.tokenService.generateTokenPair({
-      userId: user.id,
+      userId: user.id || '',
       username: user.username,
       role: user.role,
     });
@@ -46,7 +50,7 @@ export class LoginUseCase {
       refreshToken: tokenPair.refreshToken,
       expiresIn: tokenPair.expiresIn,
       user: {
-        id: user.id,
+        id: user.id || '',
         username: user.username,
         fullName: user.fullName,
         email: user.email,

@@ -1,7 +1,7 @@
 export type UserRole = 'ADMIN' | 'STAFF';
 
 export interface UserProps {
-  id: string;
+  id?: string;
   username: string;
   passwordHash: string;
   fullName: string;
@@ -10,12 +10,12 @@ export interface UserProps {
   isActive: boolean;
   mustChangePassword: boolean;
   lastLoginAt?: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export class User {
-  public readonly id: string;
+  public readonly id?: string;
   public readonly username: string;
   private _passwordHash: string;
   private _fullName: string;
@@ -37,8 +37,8 @@ export class User {
     this._isActive = props.isActive;
     this._mustChangePassword = props.mustChangePassword;
     this._lastLoginAt = props.lastLoginAt;
-    this.createdAt = props.createdAt;
-    this._updatedAt = props.updatedAt;
+    this.createdAt = props.createdAt ?? new Date();
+    this._updatedAt = props.updatedAt ?? new Date();
   }
 
   public get passwordHash(): string {

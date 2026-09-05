@@ -1,7 +1,7 @@
 import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import { IPasswordHasher } from '../../ports/IPasswordHasher';
 import { UpdateUserRequestDTO, UserResponseDTO } from '../../dtos/AuthDTO';
-import { ValidationException } from '../../../domain/exceptions/ValidationException';
+import { EntityNotFoundException, DuplicateResourceException } from '../../exceptions';
 
 export class UpdateUserUseCase {
   constructor(
@@ -12,7 +12,7 @@ export class UpdateUserUseCase {
   public async execute(userId: string, dto: UpdateUserRequestDTO): Promise<UserResponseDTO> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new ValidationException('Không tìm thấy người dùng');
+      throw new EntityNotFoundException('người dùng', userId);
     }
 
     if (dto.fullName !== undefined || dto.email !== undefined) {
@@ -22,7 +22,7 @@ export class UpdateUserUseCase {
       if (dto.email && dto.email.toLowerCase() !== user.email) {
         const existingEmail = await this.userRepository.findByEmail(dto.email.toLowerCase());
         if (existingEmail && existingEmail.id !== user.id) {
-          throw new ValidationException(`Email "${dto.email}" đã tồn tại trên hệ thống`);
+          throw new DuplicateResourceException('Email', dto.email);
         }
       }
 
@@ -45,7 +45,7 @@ export class UpdateUserUseCase {
     const updated = await this.userRepository.update(user);
 
     return {
-      id: updated.id,
+      id: updated.id || '',
       username: updated.username,
       fullName: updated.fullName,
       email: updated.email,

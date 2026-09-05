@@ -7,7 +7,7 @@ export class ListUsersUseCase {
   public async execute(options?: { isActive?: boolean; role?: string }): Promise<UserResponseDTO[]> {
     const users = await this.userRepository.findAll(options);
     return users.map((u) => ({
-      id: u.id,
+      id: u.id || '',
       username: u.username,
       fullName: u.fullName,
       email: u.email,

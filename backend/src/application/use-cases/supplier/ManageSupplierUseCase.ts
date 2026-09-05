@@ -8,7 +8,11 @@ import {
 } from '../../dtos/SupplierDTO';
 import { Supplier } from '../../../domain/entities/Supplier';
 import { ProductSupplier } from '../../../domain/entities/ProductSupplier';
-import { ValidationException } from '../../../domain/exceptions/ValidationException';
+import {
+  ValidationException,
+  EntityNotFoundException,
+  DuplicateResourceException,
+} from '../../exceptions';
 
 export class ManageSupplierUseCase {
   constructor(private readonly supplierRepository: ISupplierRepository) {}
@@ -21,7 +25,7 @@ export class ManageSupplierUseCase {
     const trimmedCode = dto.code.trim().toUpperCase();
     const existing = await this.supplierRepository.findByCode(trimmedCode);
     if (existing) {
-      throw new ValidationException(`Mã nhà cung cấp "${trimmedCode}" đã tồn tại trên hệ thống`);
+      throw new DuplicateResourceException('Mã nhà cung cấp', trimmedCode);
     }
 
     const supplier = new Supplier({
@@ -40,7 +44,7 @@ export class ManageSupplierUseCase {
   public async updateSupplier(id: string, dto: UpdateSupplierRequestDTO): Promise<SupplierResponseDTO> {
     const supplier = await this.supplierRepository.findById(id);
     if (!supplier) {
-      throw new ValidationException(`Không tìm thấy nhà cung cấp với ID: ${id}`);
+      throw new EntityNotFoundException('nhà cung cấp', id);
     }
 
     supplier.updateInfo({
@@ -87,7 +91,7 @@ export class ManageSupplierUseCase {
   public async getSupplierById(id: string): Promise<SupplierResponseDTO> {
     const supplier = await this.supplierRepository.findById(id);
     if (!supplier) {
-      throw new ValidationException(`Không tìm thấy nhà cung cấp với ID: ${id}`);
+      throw new EntityNotFoundException('nhà cung cấp', id);
     }
     return this.toResponseDTO(supplier);
   }
@@ -97,7 +101,7 @@ export class ManageSupplierUseCase {
   ): Promise<ProductSupplierTermsResponseDTO> {
     const supplier = await this.supplierRepository.findById(dto.supplierId);
     if (!supplier) {
-      throw new ValidationException(`Không tìm thấy nhà cung cấp ID: ${dto.supplierId}`);
+      throw new EntityNotFoundException('nhà cung cấp', dto.supplierId);
     }
 
     const existing = await this.supplierRepository.findProductSupplier(dto.productSku, dto.supplierId);

@@ -4,7 +4,7 @@ import { ListUsersUseCase } from './ListUsersUseCase';
 import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import { IPasswordHasher } from '../../ports/IPasswordHasher';
 import { UserResponseDTO } from '../../dtos/AuthDTO';
-import { ValidationException } from '../../../domain/exceptions/ValidationException';
+import { EntityNotFoundException } from '../../exceptions';
 
 export class ManageUserUseCase {
   public readonly create: CreateUserUseCase;
@@ -23,10 +23,10 @@ export class ManageUserUseCase {
   public async getById(userId: string): Promise<UserResponseDTO> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new ValidationException('Không tìm thấy người dùng');
+      throw new EntityNotFoundException('người dùng', userId);
     }
     return {
-      id: user.id,
+      id: user.id || '',
       username: user.username,
       fullName: user.fullName,
       email: user.email,
@@ -42,12 +42,12 @@ export class ManageUserUseCase {
   public async toggleActive(userId: string): Promise<UserResponseDTO> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new ValidationException('Không tìm thấy người dùng');
+      throw new EntityNotFoundException('người dùng', userId);
     }
     user.setActiveStatus(!user.isActive);
     const updated = await this.userRepository.update(user);
     return {
-      id: updated.id,
+      id: updated.id || '',
       username: updated.username,
       fullName: updated.fullName,
       email: updated.email,

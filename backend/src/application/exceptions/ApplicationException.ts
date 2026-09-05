@@ -1,10 +1,10 @@
-export class DomainException extends Error {
+export class ApplicationException extends Error {
   public readonly code: string;
   public readonly details?: any;
 
   constructor(
     message: string,
-    code: string = 'BUSINESS_RULE_VIOLATION',
+    code: string = 'APPLICATION_ERROR',
     details?: any
   ) {
     super(message);

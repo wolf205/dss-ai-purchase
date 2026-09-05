@@ -3,7 +3,7 @@ import { IInventoryRepository } from '../../../domain/repositories/IInventoryRep
 import { CreateProductRequestDTO, ProductResponseDTO } from '../../dtos/ProductDTO';
 import { Product } from '../../../domain/entities/Product';
 import { Inventory } from '../../../domain/entities/Inventory';
-import { ValidationException } from '../../../domain/exceptions/ValidationException';
+import { ValidationException, DuplicateResourceException } from '../../exceptions';
 
 export class CreateProductUseCase {
   constructor(
@@ -19,7 +19,7 @@ export class CreateProductUseCase {
     const trimmedSku = dto.sku.trim().toUpperCase();
     const existing = await this.productRepository.findBySku(trimmedSku);
     if (existing) {
-      throw new ValidationException(`Mã SKU "${trimmedSku}" đã tồn tại trên hệ thống (BR-011)`);
+      throw new DuplicateResourceException('Mã SKU', trimmedSku);
     }
 
     const product = new Product({

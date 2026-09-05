@@ -1,9 +1,8 @@
-import { randomUUID } from 'crypto';
 import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import { IPasswordHasher } from '../../ports/IPasswordHasher';
 import { CreateUserRequestDTO, UserResponseDTO } from '../../dtos/AuthDTO';
 import { User } from '../../../domain/entities/User';
-import { ValidationException } from '../../../domain/exceptions/ValidationException';
+import { ValidationException, DuplicateResourceException } from '../../exceptions';
 
 export class CreateUserUseCase {
   constructor(
@@ -18,18 +17,17 @@ export class CreateUserUseCase {
 
     const existingUsername = await this.userRepository.findByUsername(dto.username.trim());
     if (existingUsername) {
-      throw new ValidationException(`Tên đăng nhập "${dto.username}" đã tồn tại`);
+      throw new DuplicateResourceException('Tên đăng nhập', dto.username);
     }
 
     const existingEmail = await this.userRepository.findByEmail(dto.email.trim());
     if (existingEmail) {
-      throw new ValidationException(`Email "${dto.email}" đã tồn tại trên hệ thống`);
+      throw new DuplicateResourceException('Email', dto.email);
     }
 
     const passwordHash = await this.passwordHasher.hash(dto.password);
 
     const user = new User({
-      id: randomUUID(),
       username: dto.username.trim(),
       passwordHash,
       fullName: dto.fullName.trim(),
@@ -44,7 +42,7 @@ export class CreateUserUseCase {
     const savedUser = await this.userRepository.save(user);
 
     return {
-      id: savedUser.id,
+      id: savedUser.id || '',
       username: savedUser.username,
       fullName: savedUser.fullName,
       email: savedUser.email,

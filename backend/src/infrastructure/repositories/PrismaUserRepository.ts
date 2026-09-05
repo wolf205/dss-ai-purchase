@@ -44,23 +44,26 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   public async save(user: User): Promise<User> {
-    const record = await prisma.user.create({
-      data: {
-        id: user.id,
-        username: user.username,
-        passwordHash: user.passwordHash,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role as any,
-        isActive: user.isActive,
-        mustChangePassword: user.mustChangePassword,
-        lastLoginAt: user.lastLoginAt,
-      },
-    });
+    const data: any = {
+      username: user.username,
+      passwordHash: user.passwordHash,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role as any,
+      isActive: user.isActive,
+      mustChangePassword: user.mustChangePassword,
+      lastLoginAt: user.lastLoginAt,
+    };
+    if (user.id) {
+      data.id = user.id;
+    }
+
+    const record = await prisma.user.create({ data });
     return this.toDomain(record);
   }
 
   public async update(user: User): Promise<User> {
+    if (!user.id) throw new Error('User ID is required for update');
     const record = await prisma.user.update({
       where: { id: user.id },
       data: {

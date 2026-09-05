@@ -1,6 +1,6 @@
 import { IProductRepository } from '../../../domain/repositories/IProductRepository';
 import { ProductResponseDTO } from '../../dtos/ProductDTO';
-import { ValidationException } from '../../../domain/exceptions/ValidationException';
+import { EntityNotFoundException } from '../../exceptions';
 
 export class GetProductDetailUseCase {
   constructor(private readonly productRepository: IProductRepository) {}
@@ -8,7 +8,7 @@ export class GetProductDetailUseCase {
   public async execute(sku: string): Promise<ProductResponseDTO> {
     const product = await this.productRepository.findBySku(sku);
     if (!product) {
-      throw new ValidationException(`Không tìm thấy sản phẩm với mã SKU: ${sku}`);
+      throw new EntityNotFoundException('sản phẩm', sku);
     }
 
     return {
