@@ -6,12 +6,12 @@
 > **Phạm vi:** Dịch vụ AI Dự báo nhu cầu bán lẻ (`ai-service/` - Python 3.10+ FastAPI)  
 > **Kiến trúc áp dụng:** **Stateless Pure Compute Engine** (Tuyệt đối không kết nối trực tiếp CSDL PostgreSQL; nhận mảng lịch sử bán hàng qua HTTP POST từ Backend Node.js, xử lý thuật toán và trả về JSON)  
 > **Tài liệu tham chiếu chuẩn:**
-> * [`GEMINI.md`](file:///d:/projects/dss-ai-purchase/GEMINI.md)
-> * [`overview.md`](file:///d:/projects/dss-ai-purchase/docs/07-implementation-plan/overview.md)
-> * [`phase-details.md`](file:///d:/projects/dss-ai-purchase/docs/07-implementation-plan/phase-details.md)
-> * [`ai-service-architecture.md`](file:///d:/projects/dss-ai-purchase/docs/05-architecture/ai-service-architecture.md)
-> * [`internal-ai-contracts.md`](file:///d:/projects/dss-ai-purchase/docs/06-api-design/internal-ai-contracts.md)
-> * [`business-rules.md (BR-006, BR-007, BR-008)`](file:///d:/projects/dss-ai-purchase/docs/02-requirements/business-rules.md)
+> * [`GEMINI.md`](../../GEMINI.md)
+> * [`overview.md`](../07-implementation-plan/overview.md)
+> * [`phase-details.md`](../07-implementation-plan/phase-details.md)
+> * [`ai-service-architecture.md`](../05-architecture/ai-service-architecture.md)
+> * [`internal-ai-contracts.md`](../06-api-design/internal-ai-contracts.md)
+> * [`business-rules.md (BR-006, BR-007, BR-008)`](../02-requirements/business-rules.md)
 
 ---
 
@@ -78,7 +78,7 @@ flowchart TD
 ### MILESTONE 1.1: CONTRACTS & CONFIGURATION SCAFFOLDING
 * **Mục tiêu:** Xây dựng khung cấu hình và toàn bộ hợp đồng dữ liệu Pydantic Request/Response chuẩn hóa, sẵn sàng cho việc kiểm tra kiểu dữ liệu tự động.
 * **Thời gian ước tính:** 1 phiên làm việc.
-* **Tài liệu tham chiếu:** [`internal-ai-contracts.md`](file:///d:/projects/dss-ai-purchase/docs/06-api-design/internal-ai-contracts.md), [`ai-service-architecture.md (Mục 4)`](file:///d:/projects/dss-ai-purchase/docs/05-architecture/ai-service-architecture.md).
+* **Tài liệu tham chiếu:** [`internal-ai-contracts.md`](../06-api-design/internal-ai-contracts.md), [`ai-service-architecture.md (Mục 4)`](../05-architecture/ai-service-architecture.md).
 
 #### Danh Sách Công Việc (Work Breakdown Structure):
 1. **Cấu hình ứng dụng (`app/core/config.py`):**
@@ -138,7 +138,7 @@ flowchart TD
 ### MILESTONE 1.2: CORE MATHEMATICAL & ML ENGINES (PURE COMPUTE)
 * **Mục tiêu:** Cài đặt độc lập toàn bộ các hàm toán học, thống kê và mô hình dự báo chuỗi thời gian dưới dạng Pure Functions; kiểm thử bằng Unit Tests với `pytest`.
 * **Thời gian ước tính:** 1 - 2 phiên làm việc.
-* **Tài liệu tham chiếu:** [`business-rules.md (BR-006, BR-007)`](file:///d:/projects/dss-ai-purchase/docs/02-requirements/business-rules.md), [`ai-service-architecture.md (Mục 5)`](file:///d:/projects/dss-ai-purchase/docs/05-architecture/ai-service-architecture.md).
+* **Tài liệu tham chiếu:** [`business-rules.md (BR-006, BR-007)`](../02-requirements/business-rules.md), [`ai-service-architecture.md (Mục 5)`](../05-architecture/ai-service-architecture.md).
 
 #### Danh Sách Công Việc (Work Breakdown Structure):
 1. **Bộ đánh giá sai số & Dải tin cậy (`app/services/model_evaluator.py`):**
@@ -193,7 +193,7 @@ flowchart TD
 ### MILESTONE 1.3: SERVICE COORDINATOR & API ENDPOINTS
 * **Mục tiêu:** Hiện thực hóa bộ điều phối nghiệp vụ phân tầng dữ liệu theo `BR-006`, tích hợp công thức tổng cầu `BR-008`, xây dựng và gắn các API endpoints vào ứng dụng FastAPI.
 * **Thời gian ước tính:** 1 phiên làm việc.
-* **Tài liệu tham chiếu:** [`business-rules.md (BR-006, BR-008)`](file:///d:/projects/dss-ai-purchase/docs/02-requirements/business-rules.md), [`internal-ai-contracts.md`](file:///d:/projects/dss-ai-purchase/docs/06-api-design/internal-ai-contracts.md).
+* **Tài liệu tham chiếu:** [`business-rules.md (BR-006, BR-008)`](../02-requirements/business-rules.md), [`internal-ai-contracts.md`](../06-api-design/internal-ai-contracts.md).
 
 #### Danh Sách Công Việc (Work Breakdown Structure):
 1. **Bộ điều phối nghiệp vụ dự báo (`app/services/forecasting_service.py`):**
@@ -246,7 +246,7 @@ flowchart TD
 ### MILESTONE 1.4: INTEGRATION TEST SUITE, BENCHMARK & CONTAINER QA
 * **Mục tiêu:** Viết bộ kiểm thử tích hợp tự động toàn diện qua HTTP Client, kiểm tra các trường hợp biên, đo kiểm hiệu năng theo tiêu chuẩn `NFR-04` và xác nhận container Docker hoạt động độc lập.
 * **Thời gian ước tính:** 1 phiên làm việc.
-* **Tài liệu tham chiếu:** [`non-functional-requirements.md (NFR-02, NFR-04)`](file:///d:/projects/dss-ai-purchase/docs/02-requirements/non-functional-requirements.md), [`deployment-and-devops.md`](file:///d:/projects/dss-ai-purchase/docs/05-architecture/deployment-and-devops.md).
+* **Tài liệu tham chiếu:** [`non-functional-requirements.md (NFR-02, NFR-04)`](../02-requirements/non-functional-requirements.md), [`deployment-and-devops.md`](../05-architecture/deployment-and-devops.md).
 
 #### Danh Sách Công Việc (Work Breakdown Structure):
 1. **Bộ kiểm thử tích hợp API (`tests/test_forecast_api.py`):**

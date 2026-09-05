@@ -1,7 +1,7 @@
 # CHI TIẾT CÁC GIAI ĐOẠN THỰC THI (DETAILED PHASE-BY-PHASE IMPLEMENTATION PLAN)
 ## DỰ ÁN: HỆ THỐNG HỖ TRỢ RA QUYẾT ĐỊNH MUA HÀNG TÍCH HỢP AI (DSS AI PURCHASE)
 
-> **Tài liệu tham chiếu chuẩn:** [`GEMINI.md`](file:///c:/my_project/dss-ai-purchase/GEMINI.md), [`overview.md`](file:///c:/my_project/dss-ai-purchase/docs/07-implementation-plan/overview.md)  
+> **Tài liệu tham chiếu chuẩn:** [`GEMINI.md`](../../GEMINI.md), [`overview.md`](../07-implementation-plan/overview.md)  
 > **Nguyên tắc bất biến:** Mọi quy ước cấu trúc bảng, tên cột, công thức toán học và mã trạng thái phải tuân thủ 100% tài liệu kiến trúc đã đóng băng.
 
 ---
@@ -14,9 +14,9 @@
 * Khởi tạo Prisma ORM từ schema vật lý `physical-schema.sql` (18 bảng, 12 ENUMs), chạy Migration và nạp dữ liệu mồi (Seed Data).
 
 ### 1.2. Tài Liệu Đầu Vào Bắt Buộc (Input Documents)
-* [`physical-schema.sql`](file:///c:/my_project/dss-ai-purchase/docs/04-data-model/physical-schema.sql)
-* [`data-dictionary.md`](file:///c:/my_project/dss-ai-purchase/docs/04-data-model/data-dictionary.md)
-* [`deployment-and-devops.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/deployment-and-devops.md)
+* [`physical-schema.sql`](../04-data-model/physical-schema.sql)
+* [`data-dictionary.md`](../04-data-model/data-dictionary.md)
+* [`deployment-and-devops.md`](../05-architecture/deployment-and-devops.md)
 
 ### 1.3. Danh Sách Nhiệm Vụ Chi Tiết (Work Breakdown Structure - WBS)
 1. **Khởi tạo hạ tầng Docker:**
@@ -55,10 +55,10 @@
 * Tính toán dải mây dao động tin cậy 95% ($\pm 1.96\sigma$).
 
 ### 2.2. Tài Liệu Đầu Vào Bắt Buộc (Input Documents)
-* [`ai-service-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/ai-service-architecture.md)
-* [`internal-ai-contracts.md`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/internal-ai-contracts.md)
-* [`business-rules.md (BR-006, BR-007, BR-008)`](file:///c:/my_project/dss-ai-purchase/docs/02-requirements/business-rules.md)
-* Đặc tả chi tiết 4 Milestones: [`phase-1-milestones.md`](file:///d:/projects/dss-ai-purchase/docs/07-implementation-plan/phase-1-milestones.md)
+* [`ai-service-architecture.md`](../05-architecture/ai-service-architecture.md)
+* [`internal-ai-contracts.md`](../06-api-design/internal-ai-contracts.md)
+* [`business-rules.md (BR-006, BR-007, BR-008)`](../02-requirements/business-rules.md)
+* Đặc tả chi tiết 4 Milestones: [`phase-1-milestones.md`](../07-implementation-plan/phase-1-milestones.md)
 
 ### 2.3. Cấu Trúc Thư Mục & Deliverables (`/ai-service`)
 ```
@@ -126,36 +126,44 @@ ai-service/
 * Triển khai phân hệ Nạp dữ liệu bán hàng & tồn kho qua file Excel/CSV (`UC-003`).
 
 ### 3.2. Tài Liệu Đầu Vào Bắt Buộc (Input Documents)
-* [`backend-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/backend-architecture.md)
-* [`endpoints-spec.md`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/endpoints-spec.md)
-* [`UC-001`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-001-quan-ly-danh-muc-san-pham.md), [`UC-002`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-002-quan-ly-danh-muc-nha-cung-cap.md), [`UC-003`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-003-nap-du-lieu-ban-hang-va-ton-kho.md), [`UC-015`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-015-dang-nhap-va-quan-ly-phien-lam-viec.md), [`UC-016`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-016-quan-ly-tai-khoan-nguoi-dung.md), [`UC-017`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-017-cau-hinh-trong-so-danh-gia-nha-cung-cap.md)
+* [`backend-architecture.md`](../05-architecture/backend-architecture.md)
+* [`endpoints-spec.md`](../06-api-design/endpoints-spec.md)
+* [`UC-001`](../03-use-cases/UC-001-quan-ly-danh-muc-san-pham.md), [`UC-002`](../03-use-cases/UC-002-quan-ly-danh-muc-nha-cung-cap.md), [`UC-003`](../03-use-cases/UC-003-nap-du-lieu-ban-hang-va-ton-kho.md), [`UC-015`](../03-use-cases/UC-015-dang-nhap-va-quan-ly-phien-lam-viec.md), [`UC-016`](../03-use-cases/UC-016-quan-ly-tai-khoan-nguoi-dung.md), [`UC-017`](../03-use-cases/UC-017-cau-hinh-trong-so-danh-gia-nha-cung-cap.md)
 
 ### 3.3. Cấu Trúc Mã Nguồn Clean Architecture (`/backend`)
 ```
 backend/
+├── prisma/
+│   ├── schema.prisma                  # Định nghĩa schema cơ sở dữ liệu cho Prisma ORM
+│   ├── migrations/                    # Lịch sử các bản migration SQL
+│   └── seed.ts                        # Dữ liệu khởi tạo (Admin, Trọng số mặc định)
 ├── src/
-│   ├── domain/
-│   │   ├── entities/            # User, Product, Category, Supplier, Inventory, etc.
-│   │   ├── value-objects/       # SKU, Money, WeightDistribution
-│   │   └── repositories/        # IUserRepository, IProductRepository, etc. (Interfaces)
-│   ├── application/
-│   │   ├── dtos/                # Request / Response DTOs
+│   ├── domain/                        # TẦNG 1: DOMAIN LAYER (Pure TS, Zero Libs)
+│   │   ├── entities/                  # User, Product, Category, Supplier, Inventory, SalesHistory, SupplierWeightConfig
+│   │   ├── value-objects/             # SKU, POCode, RiskLevel, Money, WeightDistribution
+│   │   ├── services/                  # OrderRoundingService, InventoryCalculator, ABCXYZClassifier, SupplierScoringService
+│   │   ├── repositories/              # IUserRepository, IProductRepository, ICategoryRepository, ISupplierRepository, IInventoryRepository, ISalesHistoryRepository, ISupplierWeightConfigRepository
+│   │   └── exceptions/                # DomainException, InvalidWeightDistributionException, ValidationException
+│   ├── application/                   # TẦNG 2: APPLICATION LAYER
 │   │   ├── use-cases/
-│   │   │   ├── auth/            # LoginUseCase, RefreshTokenUseCase
-│   │   │   ├── users/           # CreateUserUseCase, UpdateUserUseCase
-│   │   │   ├── products/        # CreateProductUseCase, UpdateProductUseCase
-│   │   │   ├── suppliers/       # ManageSupplierUseCase, UpdateWeightsUseCase
-│   │   │   └── ingestion/       # ImportSalesInventoryUseCase
-│   │   └── services/            # TokenService, ExcelParserService
-│   ├── infrastructure/
-│   │   ├── database/            # PrismaClient, Prisma repositories implementation
-│   │   ├── security/            # BcryptHasher, JwtTokenProvider
-│   │   └── parsers/             # ExcelJsFileParser
-│   └── api/
-│       ├── middlewares/         # authMiddleware, rbacMiddleware, validateRequest, errorHandler
-│       ├── controllers/         # AuthController, ProductController, etc.
-│       ├── routes/              # authRoutes, productRoutes, etc.
-│       └── app.ts               # Express server configuration
+│   │   │   ├── auth/                  # LoginUseCase, RefreshTokenUseCase
+│   │   │   ├── user/                  # ManageUserUseCase, CreateUserUseCase, UpdateUserUseCase, ListUsersUseCase
+│   │   │   ├── product/               # CreateProductUseCase, UpdateProductUseCase, GetProductsUseCase, GetProductDetailUseCase
+│   │   │   ├── supplier/              # ManageSupplierUseCase, UpdateSupplierWeightsUseCase, GetSupplierWeightsUseCase
+│   │   │   └── ingestion/             # ImportSalesInventoryUseCase
+│   │   ├── dtos/                      # AuthDTO, ProductDTO, SupplierDTO, ImportDataDTO
+│   │   └── ports/                     # ITokenService, IPasswordHasher, IFileParser, IUnitOfWork
+│   ├── infrastructure/                # TẦNG 3: INFRASTRUCTURE LAYER
+│   │   ├── database/                  # prisma.ts, PrismaUnitOfWork.ts
+│   │   ├── repositories/              # PrismaUserRepository, PrismaProductRepository, PrismaCategoryRepository, PrismaSupplierRepository, PrismaInventoryRepository, PrismaSalesHistoryRepository, PrismaSupplierWeightConfigRepository
+│   │   ├── security/                  # BcryptPasswordHasher.ts, JwtTokenService.ts
+│   │   └── file-parsers/              # ExcelFileParser.ts
+│   └── api/                           # TẦNG 4: PRESENTATION / API LAYER
+│       ├── controllers/               # AuthController, UserController, ProductController, SupplierController, DataImportController
+│       ├── middlewares/               # authMiddleware, rbacMiddleware, validateMiddleware, errorMiddleware, uploadMiddleware
+│       ├── validations/               # authValidations, productValidations, supplierValidations, importValidations
+│       ├── routes/                    # authRoutes, userRoutes, productRoutes, supplierRoutes, importRoutes, index.ts
+│       └── server.ts                  # Express Application Server Entrypoint
 ```
 
 ### 3.4. Danh Sách Nhiệm Vụ Chi Tiết
@@ -193,13 +201,13 @@ backend/
 * Cung cấp API chạy lại phân tích theo yêu cầu (On-demand Recalculation - `UC-011`).
 
 ### 4.2. Tài Liệu Đầu Vào Bắt Buộc (Input Documents)
-* [`business-rules.md (BR-001 -> BR-008, BR-013 -> BR-016)`](file:///c:/my_project/dss-ai-purchase/docs/02-requirements/business-rules.md)
-* [`internal-ai-contracts.md`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/internal-ai-contracts.md)
-* [`UC-004`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-004-theo-doi-ton-kho-va-canh-bao-rui-ro.md), [`UC-005`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-005-xem-phan-tich-ma-tran-abc-xyz.md), [`UC-006`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-006-xem-chi-tiet-phan-tich-san-pham.md), [`UC-007`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-007-xem-du-bao-nhu-cau-ban-le.md), [`UC-008`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-008-nhap-luong-ban-du-kien-cho-san-pham-moi.md), [`UC-009`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-009-xem-danh-gia-va-xep-hang-nha-cung-cap.md), [`UC-010`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-010-xem-khuyen-nghi-mua-hang-thong-minh.md), [`UC-011`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-011-chay-lai-phan-tich-va-cap-nhat-khuyen-nghi.md)
+* [`business-rules.md (BR-001 -> BR-008, BR-013 -> BR-016)`](../02-requirements/business-rules.md)
+* [`internal-ai-contracts.md`](../06-api-design/internal-ai-contracts.md)
+* [`UC-004`](../03-use-cases/UC-004-theo-doi-ton-kho-va-canh-bao-rui-ro.md), [`UC-005`](../03-use-cases/UC-005-xem-phan-tich-ma-tran-abc-xyz.md), [`UC-006`](../03-use-cases/UC-006-xem-chi-tiet-phan-tich-san-pham.md), [`UC-007`](../03-use-cases/UC-007-xem-du-bao-nhu-cau-ban-le.md), [`UC-008`](../03-use-cases/UC-008-nhap-luong-ban-du-kien-cho-san-pham-moi.md), [`UC-009`](../03-use-cases/UC-009-xem-danh-gia-va-xep-hang-nha-cung-cap.md), [`UC-010`](../03-use-cases/UC-010-xem-khuyen-nghi-mua-hang-thong-minh.md), [`UC-011`](../03-use-cases/UC-011-chay-lai-phan-tich-va-cap-nhat-khuyen-nghi.md)
 
 ### 4.3. Danh Sách Nhiệm Vụ Chi Tiết
 1. **Domain Services Định Lượng Tồn Kho:**
-   * `InventoryCalculationService`:
+   * `InventoryCalculator`:
      * Tính độ lệch chuẩn bán hàng $\sigma_L$ trong chu kỳ Lead Time.
      * $SS = Z_{\alpha} \times \sigma_L \times \sqrt{L}$ với $Z_{\alpha} = 1.65$ (cho mức độ phục vụ 95%).
      * $ROP = (d \times L) + SS$.
@@ -220,7 +228,7 @@ backend/
    * Điểm Giá cả ($S_{price}$): So sánh đơn giá hiện tại với mức giá cạnh tranh trên thị trường.
    * Điểm Lead Time ($S_{leadtime}$): Tỷ lệ thời gian giao hàng thực tế so với cam kết.
    * Điểm tổng hợp: $S_{total} = w_{otif}S_{otif} + w_{quality}S_{quality} + w_{price}S_{price} + w_{leadtime}S_{leadtime}$.
-4. **AI Service Client & Fallback Engine (`AxiosAiServiceClient`):**
+4. **AI Service Client & Fallback Engine (`AxiosAIForecastClient`):**
    * Kết nối HTTP POST sang `http://ai-service:8000/api/v1/forecast/batch`.
    * Cấu hình Timeout 4000ms (`NFR-04`).
    * Nếu AI Service bị gián đoạn hoặc timeout, tự động chuyển đổi sang Local Fallback Engine chạy thuật toán SMA-7 trên Node.js (`BR-007`).
@@ -250,24 +258,24 @@ backend/
 * Triển khai Giao dịch nhận hàng nguyên tử ACID (`UC-014`, `BR-018`) thông qua `prisma.$transaction`.
 
 ### 5.2. Tài Liệu Đầu Vào Bắt Buộc (Input Documents)
-* [`data-flow-and-integrity.md`](file:///c:/my_project/dss-ai-purchase/docs/04-data-model/data-flow-and-integrity.md)
-* [`UC-012`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-012-lap-va-xac-nhan-don-mua-hang.md), [`UC-013`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-013-quan-ly-va-tra-cuu-lich-su-don-mua-hang.md), [`UC-014`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-014-ghi-nhan-nhan-hang-va-cap-nhat-ton-kho.md)
-* [`business-rules.md (BR-001, BR-017 -> BR-025)`](file:///c:/my_project/dss-ai-purchase/docs/02-requirements/business-rules.md)
+* [`data-flow-and-integrity.md`](../04-data-model/data-flow-and-integrity.md)
+* [`UC-012`](../03-use-cases/UC-012-lap-va-xac-nhan-don-mua-hang.md), [`UC-013`](../03-use-cases/UC-013-quan-ly-va-tra-cuu-lich-su-don-mua-hang.md), [`UC-014`](../03-use-cases/UC-014-ghi-nhan-nhan-hang-va-cap-nhat-ton-kho.md)
+* [`business-rules.md (BR-001, BR-017 -> BR-025)`](../02-requirements/business-rules.md)
 
 ### 5.3. Danh Sách Nhiệm Vụ Chi Tiết
 1. **Khởi tạo Đơn mua hàng từ Khuyến nghị (`UC-012`):**
    * Cho phép chọn nhiều khuyến nghị, tự động gom nhóm theo Nhà cung cấp.
    * Sinh mã đơn hàng tự động định dạng `PO-YYYYMMDD-XXXX` (`BR-024`).
    * Tạo đơn hàng ở trạng thái `DRAFT`.
-2. **Xác nhận đặt hàng (`ConfirmPoUseCase` - `UC-012`):**
+2. **Xác nhận đặt hàng (`ConfirmPurchaseOrderUseCase` - `UC-012`):**
    * Kiểm tra điều kiện: Đơn hàng phải đang ở trạng thái `DRAFT`.
    * Cập nhật trạng thái sang `ORDERED`.
    * **Thực thi `BR-001`:** Lập tức tăng số lượng đang về `on_order += ordered_quantity` cho từng sản phẩm trong bảng `inventory`.
    * **Thực thi `BR-025`:** Khóa cứng toàn bộ danh sách sản phẩm và số lượng, không cho phép chỉnh sửa.
-3. **Hủy đơn hàng (`CancelPoUseCase` - `UC-013`):**
+3. **Hủy đơn hàng (`CancelPurchaseOrderUseCase` - `UC-013`):**
    * Nếu hủy đơn `DRAFT`: Chuyển trạng thái sang `CANCELLED`.
    * Nếu hủy đơn `ORDERED`: Hoàn trả lại số lượng đang về `on_order -= ordered_quantity` trong `inventory`, sau đó chuyển sang `CANCELLED`.
-4. **Giao dịch nhận hàng nguyên tử ACID (`GoodsReceiptUseCase` - `UC-014`):**
+4. **Giao dịch nhận hàng nguyên tử ACID (`ReceiveGoodsUseCase` - `UC-014`):**
    * Sử dụng `prisma.$transaction` thực thi đồng thời các bước sau trong cùng 1 transaction:
      ```typescript
      await prisma.$transaction(async (tx) => {
@@ -342,9 +350,9 @@ backend/
 * Hiện thực hóa toàn bộ trải nghiệm người dùng từ Khuyến nghị $\rightarrow$ Tạo đơn $\rightarrow$ Chốt đơn $\rightarrow$ Nhận hàng.
 
 ### 6.2. Tài Liệu Đầu Vào Bắt Buộc (Input Documents)
-* [`frontend-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/frontend-architecture.md)
-* [`endpoints-spec.md`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/endpoints-spec.md)
-* Tất cả các file Use Case UI [`UC-001` đến `UC-017`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/)
+* [`frontend-architecture.md`](../05-architecture/frontend-architecture.md)
+* [`endpoints-spec.md`](../06-api-design/endpoints-spec.md)
+* Tất cả các file Use Case UI [`UC-001` đến `UC-017`](../03-use-cases/)
 
 ### 6.3. Cấu Trúc Module Tính Năng (`src/features/`)
 ```
@@ -419,8 +427,8 @@ frontend/
 * Đóng gói Docker hoàn chỉnh và hoàn thiện tài liệu hướng dẫn vận hành.
 
 ### 7.2. Tài Liệu Đầu Vào Bắt Buộc (Input Documents)
-* [`non-functional-requirements.md`](file:///c:/my_project/dss-ai-purchase/docs/02-requirements/non-functional-requirements.md)
-* [`deployment-and-devops.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/deployment-and-devops.md)
+* [`non-functional-requirements.md`](../02-requirements/non-functional-requirements.md)
+* [`deployment-and-devops.md`](../05-architecture/deployment-and-devops.md)
 
 ### 7.3. Danh Sách Kịch Bản Kiểm Thử Toàn Diện (E2E Test Scenarios)
 1. **Kịch Bản 1: Luồng Nghiệp Vụ Chính (Golden Happy Path):**

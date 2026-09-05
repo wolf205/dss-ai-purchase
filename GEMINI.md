@@ -1,106 +1,167 @@
-# STATIC AGENT DIRECTIVES & CONTEXT: DSS AI PURCHASE
+# HƯỚNG DẪN DÀNH CHO AI AGENT (GEMINI CLI ASSISTANT)
+## DỰ ÁN: HỆ THỐNG HỖ TRỢ RA QUYẾT ĐỊNH MUA HÀNG TÍCH HỢP AI (DSS AI PURCHASE)
 
-> [!IMPORTANT]
-> **TÀI LIỆU QUY CHUẨN TỐI CAO DÀNH CHO AI AGENT (STATIC SYSTEM CONTEXT)**
-> Mọi AI Agent (Gemini / Antigravity) khi làm việc trong repository này **BẮT BUỘC** phải đọc và tuân thủ tuyệt đối các quy tắc trong file này ở mọi phiên làm việc. Tuyệt đối không tự ý suy diễn, tự ý sửa đổi quy tắc nghiệp vụ, tự ý thay đổi công nghệ hoặc quét toàn bộ tài liệu khi chưa được chỉ định.
-
----
-
-## 1. TỔNG QUAN HỆ THỐNG & RANH GIỚI NGHIỆP VỤ
-
-* **Tên dự án:** Hệ Thống Hỗ Trợ Ra Quyết Định Mua Hàng Tích Hợp AI (DSS AI Purchase).
-* **Bản chất hệ thống:** Là **Decision Support System (DSS)** hỗ trợ nhân viên ra quyết định mua hàng (Human-in-the-loop). Hệ thống đưa ra gợi ý kèm giải thích minh bạch (Explainable Insights); quyền quyết định và chốt đơn thuộc về con người.
-* **Phạm vi mô hình:** Dành cho **1 cửa hàng bán lẻ đơn lẻ (Single Retail Store)** với quy mô quản lý dưới 1.000 SKU sản phẩm.
-* **Ranh giới NGOÀI phạm vi (Out-of-scope - CẤM triển khai):**
-  * ❌ KHÔNG quản lý chuỗi đa chi nhánh hoặc điều chuyển kho liên chi nhánh.
-  * ❌ KHÔNG xây dựng phân hệ kế toán tài chính, công nợ chuyên sâu.
-  * ❌ KHÔNG xây dựng màn hình thu ngân quét mã vạch (POS) (dữ liệu bán hàng nạp qua file Excel/CSV).
-  * ❌ KHÔNG tự động gửi API đặt hàng hoặc tự động thanh toán tài chính cho nhà cung cấp.
-  * ❌ KHÔNG quản lý chi tiết vị trí từng ô kệ kho (WMS) hay vị trí từng lô date chuyên sâu.
+> **Mục tiêu:** Tài liệu này đóng vai trò là "Kim chỉ nam" (Single Source of Guidance) cho AI Agent trong suốt quá trình phát triển mã nguồn, kiểm thử, refactor và bảo trì hệ thống. Mọi phản hồi và hành động của Agent **BẮT BUỘC** phải tuân thủ nghiêm ngặt các nguyên tắc, bảng điều hướng tài liệu và quy trình kiểm tra dưới đây.
 
 ---
 
-## 2. NGUYÊN TẮC VÀNG BẮT BUỘC DÀNH CHO AGENT (GOLDEN RULES)
+## 1. TRIẾT LÝ PHÁT TRIỂN & CAM KẾT CHẤT LƯỢNG (CORE ETHOS)
 
-### Rule 1: Tuyệt Đối Tuân Thủ Tài Liệu Đặc Tả (Strict Specification Adherence)
-* Mọi cấu trúc bảng, tên trường, kiểu dữ liệu, mã lỗi, công thức toán học và luồng nghiệp vụ **đã được đóng băng** trong thư mục `docs/`.
-* **CẤM** tự ý thêm/bớt trường dữ liệu trong CSDL nếu không có trong `04-data-model`.
-* **CẤM** tự ý thay đổi mã trạng thái đơn hàng (`DRAFT`, `ORDERED`, `RECEIVED`, `CANCELLED`).
-* **CẤM** tự ý thay đổi các công thức toán học định lượng: Vị trí tồn kho $\text{IP}$, Tồn kho an toàn $\text{SS}$, Điểm đặt hàng lại $\text{ROP}$, Số ngày bán $\text{DoS}$, Số lượng mua thô $Q_{raw}$, Làm tròn MOQ/Pack Size, Sai số WAPE/MAE, và Bộ 4 điểm nhà cung cấp.
-
-### Rule 2: Đọc Đúng Tài Liệu Mục Tiêu (Targeted Reading - Tránh Quét Toàn Bộ)
-* **KHÔNG ĐƯỢC** quét toàn bộ thư mục `docs/` một cách lãng phí token context.
-* Trước khi lập trình bất kỳ module nào, Agent **BẮT BUỘC** phải tra cứu **Bảng Điều Hướng Tài Liệu (Section 3)** dưới đây và **chỉ đọc đúng các file được chỉ định**.
-
-### Rule 3: Tuân Thủ Ngăn Xếp Công Nghệ (Tech Stack Confinement)
-* **Backend:** Node.js 20+ + Express + TypeScript + **Clean Architecture** + **Prisma ORM** + Zod.
-* **Frontend:** React 18 + Vite + TypeScript + **Feature-Based Architecture** + **TailwindCSS** + **TanStack Query** + **Apache ECharts**.
-* **AI Service:** Python 3.10+ + **FastAPI** theo mô hình **Stateless Pure Compute Engine** (Không kết nối trực tiếp CSDL; nhận mảng lịch sử bán hàng qua HTTP POST từ Node.js, xử lý thuật toán dự báo và trả về JSON).
-* **Database:** PostgreSQL 14+ (18 bảng chuẩn hóa 3NF, kiểm soát toàn vẹn giao dịch ACID).
-* **DevOps:** Docker Compose (mạng nội bộ `dss-network`).
-
-### Rule 4: Bảo Toàn Tính Toàn Vẹn Giao Dịch & Máy Trạng Thái (Integrity & State Rules)
-* **Chống đặt trùng lặp 100% (`BR-001`):** Vị trí tồn kho $\text{IP} = \text{On-Hand} + \text{On-Order}$. Khi đơn hàng chuyển sang `ORDERED`, phải lập tức tăng $\text{On-Order}$.
-* **Khóa đơn hàng (`BR-025`):** Khi đơn hàng ở trạng thái `ORDERED`, khóa cứng toàn bộ danh mục sản phẩm và số lượng. Chỉ cho phép 2 hành động: *Ghi nhận nhận hàng* hoặc *Hủy đơn*.
-* **Giao dịch nguyên tử khi nhận hàng (`BR-018`, `UC-014`):** Thực thi trong 1 giao dịch cơ sở dữ liệu (`prisma.$transaction`): tăng $\text{On-Hand} += Q_{accepted}$, giải phóng $\text{On-Order} -= Q_{ordered}$, đóng đơn `RECEIVED`, lưu bản ghi vào `delivery_history`.
-* **Cơ chế Fallback AI (`BR-007`):** Nếu sai số $\text{WAPE} > 40\%$, hệ thống tự động chuyển sang dùng thuật toán Trung bình trượt 7 ngày (SMA-7) an toàn.
-
-### Rule 5: Chuẩn Hóa Phản Hồi API (Uniform Envelope)
-* Mọi API của Backend bắt buộc phải bọc trong Envelope chuẩn:
-  * Thành công: `{ success: true, data: ..., meta?: ..., timestamp: ... }`
-  * Thất bại: `{ success: false, error: { code: ..., message: ..., details?: ... }, timestamp: ... }`
+1. **Tuân thủ tài liệu tuyệt đối (Zero Deviation):**
+   * Toàn bộ kiến trúc, bảng cơ sở dữ liệu, tên trường, công thức toán học, hợp đồng API và mã lỗi đã được thiết kế hoàn chỉnh trong thư mục `docs/`.
+   * **CẤM** tự ý thay đổi tên trường, thêm bớt bảng, thay đổi công thức toán, hoặc tự bịa ra các API endpoint không có trong đặc tả.
+2. **Nguyên tắc Clean Architecture & Tách Biệt Trách Nhiệm:**
+   * **Domain Layer:** Là trung tâm bất biến, không phụ thuộc vào Express, Prisma, hay bất kỳ thư viện ngoài nào. Mọi nghiệp vụ toán học ($SS, ROP, Q_{raw}$, ABC-XYZ, OTIF) phải nằm trọn vẹn trong Domain Services.
+   * **Application Layer:** Điều phối Use Cases, nhận Request DTO, gọi Domain Services/Repositories, trả về Response DTO.
+   * **Infrastructure Layer:** Triển khai Repository interfaces bằng Prisma, kết nối AI Service qua HTTP Client, xử lý bảo mật (Bcrypt/JWT), đọc file Excel/CSV.
+   * **Presentation / API Layer:** Tiếp nhận HTTP Request, validate dữ liệu đầu vào bằng Zod, gọi Use Case, chuẩn hóa response Envelope.
+3. **Stateless AI Service:**
+   * Dịch vụ AI (Python FastAPI) chỉ thực hiện tính toán số học thuần túy (Compute Engine), **tuyệt đối không kết nối trực tiếp đến PostgreSQL**. Mọi dữ liệu lịch sử bán hàng phải được Backend truyền sang qua HTTP payload.
+4. **Bảo Toàn Tính Toàn Vẹn Dữ Liệu (ACID & Anti-Duplicate):**
+   * Mọi thao tác ghi nhiều bảng (ví dụ: `UC-014` Nghiệm thu hàng & Cập nhật tồn kho) bắt buộc bọc trong `prisma.$transaction`.
+   * Vị trí tồn kho $IP = \text{On-Hand} + \text{On-Order}$ phải được duy trì chính xác để chống đặt hàng trùng lặp (`BR-001`).
 
 ---
 
-## 3. BẢNG ĐIỀU HƯỚNG TÀI LIỆU THEO TÁC VỤ (TASK-TO-DOCUMENT ROUTER)
+## 2. QUY TRÌNH 5 GIAI ĐOẠN LÀM VIỆC NGHIÊM NGẶT (STRICT 5-STAGE PROTOCOL)
+
+Khi nhận bất kỳ yêu cầu lập trình (Phase, Use Case, Module hoặc Task sửa lỗi), Agent **BẮT BUỘC** tuân thủ tuần tự 5 giai đoạn:
+
+```mermaid
+flowchart LR
+    A["1. Phân Tích & Lập Kế Hoạch"] --> Gate{🛑 User Duyệt?}
+    Gate -- Chưa duyệt --> A
+    Gate -- Đồng ý --> B["2. Triển Khai Cuốn Chiếu"]
+    B --> C["3. Đối Chiếu Khớp Nối Chéo"]
+    C --> D["4. Rà Soát Bug Ngầm & Thử Nghiệm Biên"]
+    D --> E["5. Nghiệm Thu & Bàn Giao"]
+```
+
+### Giai đoạn 1: Phân Tích Kỹ Thuật & Lập Kế Hoạch (Planning & Approval Gate)
+1. **Đọc tài liệu mục tiêu:** Tra cứu Bảng Điều Hướng (Section 4 & 5), đọc chính xác các file nghiệp vụ, Use Case và kiến trúc liên quan.
+2. **Chia nhỏ bài toán (Chunking):**
+   * Nếu Phase hoặc Task có phạm vi rộng (nhiều bảng, nhiều layer, hoặc cả frontend/backend), **BẮT BUỘC** chia nhỏ thành các Milestone/Sub-task tuần tự, độc lập và khả thi.
+   * Xác định rõ ràng Definition of Done (DoD) cho từng phần nhỏ.
+3. **Trình bày kế hoạch hành động:**
+   * Liệt kê cụ thể danh sách file cần tạo mới `[NEW]` hoặc chỉnh sửa `[MODIFY]`.
+   * Mô tả ngắn gọn logic cốt lõi sẽ triển khai cho từng file.
+   * Nêu rõ các rủi ro kỹ thuật, điểm nghẽn hoặc giả định (nếu có).
+4. 🛑 **CỔNG KIỂM SOÁT BẮT BUỘC (APPROVAL GATE):**
+   * **DỪNG LẠI và CHỜ USER DUYỆT KẾ HOẠCH.**
+   * **CẤM** tự ý viết code khi chưa có sự xác nhận ("Đồng ý", "Duyệt", "Proceed", ...) từ người dùng.
+
+### Giai đoạn 2: Triển Khai Cuốn Chiếu Từng Phần (Incremental Implementation)
+1. Tiến hành viết code tuần tự theo từng Milestone/Sub-task đã được duyệt.
+2. Không sửa hàng loạt file ở các tầng khác nhau cùng lúc nếu chưa hoàn thành logic tầng nền tảng.
+3. Tuân thủ nghiêm ngặt Clean Architecture: Domain $\rightarrow$ Application $\rightarrow$ Infrastructure $\rightarrow$ Presentation.
+
+### Giai đoạn 3: Kiểm Tra Khớp Nối & Tính Nhất Quán Chéo (Cross-Component Consistency)
+Sau khi viết code, **TUYỆT ĐỐI KHÔNG CHỈ DỪNG LẠI Ở VIỆC CODE CHẠY ĐƯỢC / KHÔNG BÁO LỖI BIÊN DỊCH**. Agent bắt buộc phải rà soát đối chiếu chéo giữa các tầng:
+1. **Database $\leftrightarrow$ Prisma $\leftrightarrow$ Domain:**
+   * Tên cột SQL, kiểu dữ liệu, ràng buộc check trong `docs/04-data-model/physical-schema.sql` $\equiv$ Model trong `backend/prisma/schema.prisma` $\equiv$ Domain Entity $\equiv$ DTO.
+   * Các cột tính toán tự động (như `calculated_ip`) hoặc trigger database phải đồng bộ 100% với logic code backend (`BR-001`).
+2. **Backend $\leftrightarrow$ Frontend:**
+   * DTO / Zod Schema trả về từ Backend $\equiv$ TypeScript Interface / Type của Frontend.
+   * Định dạng dữ liệu thời gian (ISO 8601 UTC), định dạng tiền tệ, mã trạng thái đơn hàng và mã lỗi.
+3. **Backend $\leftrightarrow$ AI Service Python:**
+   * Khớp nối hợp đồng HTTP POST: Định dạng mảng lịch sử bán hàng, kiểu float/int, cấu trúc JSON trả về (`wape`, `mae`, `confidence_interval`).
+4. **Trạng Thái Nghiệp Vụ (State Machine Integrity):**
+   * Máy trạng thái đơn hàng (`DRAFT` $\rightarrow$ `ORDERED` $\rightarrow$ `RECEIVED` / `CANCELLED`) được bảo vệ chặt chẽ, không có đường tắt hoặc lỗ hổng trạng thái (`BR-025`).
+5. **Docker & Cấu Hình Môi Trường:**
+   * Mọi biến môi trường mới đều phải có mặt trong `.env.example`, `docker-compose.yml` và build-time arguments trong các `Dockerfile`.
+
+### Giai đoạn 4: Rà Soát Bug Ngầm & Thử Nghiệm Biên (Deep Audit & Edge-Case Inspection)
+Chủ động phân tích logic để triệt tiêu các bug ngầm trước khi bàn giao:
+* **Giao dịch & ACID (`BR-018`):** Các tác vụ ghi nhiều bảng (nhận hàng, chốt PO) đã bọc đầy đủ trong `prisma.$transaction` chưa? Có nguy cơ race condition hay deadlock không?
+* **Phép toán & Xử lý số học:** Kiểm tra nguy cơ chia cho 0 (division by zero khi mẫu số bằng 0 trong tính WAPE, OTIF, % biến động), xử lý làm tròn MOQ/Pack Size (`BR-009`, `BR-010`), làm tròn số âm hoặc số thực.
+* **Nullability & Undefined:** Kiểm tra an toàn khi mảng rỗng, dữ liệu thiếu, sản phẩm chưa từng có lịch sử bán (Cold Start `UC-008`).
+* **Fallback & Timeout (`BR-007`):** AI Service bị timeout (> 4s) hoặc trả về lỗi thì cơ chế SMA-7 fallback cục bộ có kích hoạt an toàn và ghi log không?
+
+### Giai đoạn 5: Nghiệm Thu & Bàn Giao (Sign-Off & Verification)
+1. Chạy toàn bộ Unit Tests, Integration Tests và Linting.
+2. Kiểm tra lại toàn bộ Pre-submission Checklist (Section 7).
+3. Báo cáo kết quả rõ ràng, minh bạch cho người dùng.
+
+---
+
+## 3. CẤU TRÚC THƯ MỤC CHUẨN CỦA DỰ ÁN (CANONICAL DIRECTORY TREE)
+
+Mọi mã nguồn Backend bắt buộc tuân theo cấu trúc đã quy định trong `docs/05-architecture/backend-architecture.md`:
+
+```
+backend/src/
+├── domain/                        # TẦNG 1: DOMAIN LAYER (Pure TS, Zero Libs)
+│   ├── entities/                  # Product, Supplier, Inventory, PurchaseOrder, etc.
+│   ├── value-objects/             # SKU, POCode, RiskLevel, Money, WeightDistribution
+│   ├── services/                  # InventoryCalculator, ABCXYZClassifier, OrderRoundingService, SupplierScoringService
+│   ├── repositories/              # IProductRepository, ISupplierRepository, etc. (Interfaces)
+│   └── exceptions/                # DomainException, ValidationException, etc.
+├── application/                   # TẦNG 2: APPLICATION LAYER
+│   ├── use-cases/                 # Các Use Case tương ứng theo từng module nghiệp vụ
+│   ├── dtos/                      # Request / Response DTOs
+│   └── ports/                     # IAIForecastClient, ITokenService, IPasswordHasher, IUnitOfWork, IFileParser
+├── infrastructure/                # TẦNG 3: INFRASTRUCTURE LAYER
+│   ├── database/                  # prisma.ts, PrismaUnitOfWork.ts
+│   ├── repositories/              # PrismaProductRepository, PrismaInventoryRepository, etc.
+│   ├── external-services/         # AxiosAIForecastClient.ts
+│   ├── security/                  # BcryptPasswordHasher.ts, JwtTokenService.ts
+│   └── file-parsers/              # ExcelFileParser.ts
+└── api/                           # TẦNG 4: PRESENTATION / API LAYER
+    ├── controllers/               # Express Controllers
+    ├── middlewares/               # authMiddleware, rbacMiddleware, validateMiddleware, errorMiddleware, uploadMiddleware
+    ├── validations/               # Zod Schemas
+    ├── routes/                    # Express Routers
+    └── server.ts                  # Express Application Server Entrypoint
+```
+
+---
+
+## 4. BẢNG ĐIỀU HƯỚNG TÀI LIỆU THEO TÁC VỤ (TASK-TO-DOCUMENT ROUTER)
 
 Trước khi thực hiện một tác vụ cụ thể, Agent hãy tìm tác vụ trong bảng dưới đây và mở chính xác tài liệu được liên kết:
 
-| Nhóm Tác Vụ Cần Triển Khai | Tài Liệu Bắt Buộc Phải Đọc Trước Khi Viết Code | Mục Đích & Phạm Vi Tham Chiếu |
+| Nhóm Tác Vụ Cần Làm | File Tài Liệu Bắt Buộc Phải Đọc Trước | Nội Dung Trọng Tâm Cần Nắm Bắt |
 | :--- | :--- | :--- |
-| **Khởi tạo Database / Migration / Prisma** | 1. [`physical-schema.sql`](file:///c:/my_project/dss-ai-purchase/docs/04-data-model/physical-schema.sql)<br>2. [`data-dictionary.md`](file:///c:/my_project/dss-ai-purchase/docs/04-data-model/data-dictionary.md) | Copy trực tiếp DDL SQL, ENUMs, Check constraints, quan hệ khóa ngoại và kiểu dữ liệu. |
-| **Backend: Thực Thể & Nghiệp Vụ Cốt Lõi (Domain Layer)** | 1. [`business-rules.md`](file:///c:/my_project/dss-ai-purchase/docs/02-requirements/business-rules.md)<br>2. [`backend-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/backend-architecture.md) | Cài đặt các Entities, Value Objects, Domain Services tính toán ($SS, ROP, Q_{raw}$, làm tròn MOQ/Pack Size, ABC-XYZ, OTIF). |
-| **Backend: Triển Khai Use Case Cụ Thể (Application Layer)** | 1. [`backend-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/backend-architecture.md)<br>2. File Use Case tương ứng: [`UC-xxx.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/) | Đọc Main Flow, Alternative Flow, Exception Flow và triển khai Use Case Interactor. |
-| **Backend: Triển Khai Giao Dịch Nhận Hàng / Chốt Đơn (ACID)** | 1. [`data-flow-and-integrity.md`](file:///c:/my_project/dss-ai-purchase/docs/04-data-model/data-flow-and-integrity.md)<br>2. [`UC-014-ghi-nhan-nhan-hang-va-cap-nhat-ton-kho.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-014-ghi-nhan-nhan-hang-va-cap-nhat-ton-kho.md) | Xem mã giả Transaction và cài đặt `PrismaUnitOfWork` cập nhật kho 2 chiều an toàn. |
-| **Backend: Xây Dựng REST API Endpoint Cụ Thể** | 1. [`endpoints-spec.md`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/endpoints-spec.md)<br>2. [`overview.md (API)`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/overview.md) | Tra cứu Method, URI, Request Body, Zod Schema, Response 200/400/403/422 và Quyền hạn RBAC. |
-| **Backend: Gọi Dịch Vụ AI Dự Báo** | 1. [`internal-ai-contracts.md`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/internal-ai-contracts.md)<br>2. [`ai-service-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/ai-service-architecture.md) | Cài đặt Axios Client gọi sang `POST /api/v1/forecast`, cấu hình timeout 4s và fallback cục bộ. |
-| **Python: Triển Khai AI Service / Thuật Toán Dự Báo** | 1. [`ai-service-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/ai-service-architecture.md)<br>2. [`internal-ai-contracts.md`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/internal-ai-contracts.md)<br>3. [`business-rules.md (BR-006 -> BR-008)`](file:///c:/my_project/dss-ai-purchase/docs/02-requirements/business-rules.md)<br>4. [`phase-1-milestones.md`](file:///c:/my_project/dss-ai-purchase/docs/07-implementation-plan/phase-1-milestones.md) | Cài đặt FastAPI, Pydantic schemas, mô hình Holt-Winters, tính WAPE/MAE, dải mây tin cậy, Fallback SMA-7 và checklist 4 Milestones. |
-| **Frontend: Cấu Trúc Module & Tính Năng (Feature-Based)** | 1. [`frontend-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/frontend-architecture.md)<br>2. [`endpoints-spec.md`](file:///c:/my_project/dss-ai-purchase/docs/06-api-design/endpoints-spec.md) | Tổ chức mã nguồn trong `src/features/<feature_name>`, cài đặt API hooks, components và types. |
-| **Frontend: Quản Lý Cache & Tự Động Làm Mới (React Query)** | 1. [`frontend-architecture.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/frontend-architecture.md)<br>2. [`data-flow-and-integrity.md`](file:///c:/my_project/dss-ai-purchase/docs/04-data-model/data-flow-and-integrity.md) | Cấu hình Query Keys và thiết lập `invalidateQueries` khi chạy lại phân tích (`UC-011`) hoặc nhận hàng (`UC-014`). |
-| **Frontend: Vẽ Biểu Đồ Chuỗi Thời Gian & Ma Trận 9 Ô** | 1. [`frontend-architecture.md (Section 5)`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/frontend-architecture.md)<br>2. [`UC-007`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-007-xem-du-bao-nhu-cau-ban-le.md) & [`UC-005`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-005-xem-phan-tich-ma-tran-abc-xyz.md) | Sử dụng Apache ECharts vẽ dải mây biến động tin cậy (Confidence Shaded Area) và Grid 9 ô click-to-filter. |
-| **Frontend: Styling & Bảng Màu Rủi Ro Tồn Kho** | 1. [`frontend-architecture.md (Section 4)`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/frontend-architecture.md)<br>2. [`business-rules.md (BR-002)`](file:///c:/my_project/dss-ai-purchase/docs/02-requirements/business-rules.md) | Cấu hình `tailwind.config.js` với 5 màu chuẩn: Đỏ sẫm (Hết hàng), Đỏ cam (Nguy cấp), Vàng (Cần đặt), Xanh lá (An toàn), Tím (Tồn dư). |
-| **DevOps: Đóng Gói Docker Compose & Môi Trường** | 1. [`deployment-and-devops.md`](file:///c:/my_project/dss-ai-purchase/docs/05-architecture/deployment-and-devops.md) | Sử dụng trực tiếp `docker-compose.yml`, các file Dockerfile mẫu và file `.env`. |
-| **Lập Kế Hoạch & Trình Tự Triển Khai (Roadmap & Phases)** | 1. [`overview.md (Plan)`](file:///c:/my_project/dss-ai-purchase/docs/07-implementation-plan/overview.md)<br>2. [`phase-details.md`](file:///c:/my_project/dss-ai-purchase/docs/07-implementation-plan/phase-details.md)<br>3. [`phase-1-milestones.md`](file:///c:/my_project/dss-ai-purchase/docs/07-implementation-plan/phase-1-milestones.md) | Xem tổng quan 7 giai đoạn (Phase 0 -> Phase 6), ma trận phụ thuộc, chi tiết milestones Phase 1 và tiêu chuẩn nghiệm thu DoD. |
+| **Tìm hiểu nghiệp vụ, logic tính toán** | [`docs/02-requirements/business-rules.md`](docs/02-requirements/business-rules.md) | 26 quy tắc nghiệp vụ (`BR-001` $\rightarrow$ `BR-026`), công thức tính ROP, SS, Qraw, Pareto ABC, CV XYZ, OTIF. |
+| **Xem chi tiết 17 luồng Use Case** | [`docs/03-use-cases/overview.md`](docs/03-use-cases/overview.md) và các file `docs/03-use-cases/UC-xxx.md` | Luồng sự kiện chính, ngoại lệ, điều kiện tiên quyết, dữ liệu đầu vào/ra của từng Use Case. |
+| **Cơ sở dữ liệu, bảng, cột, kiểu dữ liệu** | [`docs/04-data-model/physical-schema.sql`](docs/04-data-model/physical-schema.sql)<br>[`docs/04-data-model/data-dictionary.md`](docs/04-data-model/data-dictionary.md) | DDL 18 bảng chuẩn PostgreSQL, kiểu dữ liệu, ràng buộc Foreign Key, Unique, Check Constraint, ENUMs. |
+| **Toàn vẹn dữ liệu, giao dịch nhận hàng ACID** | [`docs/04-data-model/data-flow-and-integrity.md`](docs/04-data-model/data-flow-and-integrity.md) | Luồng luân chuyển dữ liệu, cơ chế bọc giao dịch ACID trong nhận hàng (`UC-014`), chống đặt trùng (`BR-001`). |
+| **Thiết kế Backend & Clean Architecture** | [`docs/05-architecture/backend-architecture.md`](docs/05-architecture/backend-architecture.md) | Cấu trúc 4 tầng Clean Architecture, phân quyền RBAC, quản lý transaction bằng Unit of Work. |
+| **Thiết kế Dịch vụ AI (Python FastAPI)** | [`docs/05-architecture/ai-service-architecture.md`](docs/05-architecture/ai-service-architecture.md) | Kiến trúc Stateless AI, mô hình Holt-Winters + SMA-7, cơ chế Fallback tự động khi WAPE > 40%. |
+| **Thiết kế Giao diện Frontend React** | [`docs/05-architecture/frontend-architecture.md`](docs/05-architecture/frontend-architecture.md) | Cấu trúc Feature-based, bảng màu 5 cấp độ rủi ro tồn kho, biểu đồ ECharts 9 ô ABC-XYZ và dải mây dự báo. |
+| **Quy chuẩn API Endpoint & Mã lỗi** | [`docs/06-api-design/endpoints-spec.md`](docs/06-api-design/endpoints-spec.md)<br>[`docs/06-api-design/openapi.yaml`](docs/06-api-design/openapi.yaml) | Chuẩn Envelope phản hồi `{ success, data, meta, timestamp }`, quy chuẩn mã lỗi HTTP & Error Codes. |
+| **Hợp đồng giao tiếp Backend <-> AI Service** | [`docs/06-api-design/internal-ai-contracts.md`](docs/06-api-design/internal-ai-contracts.md) | Định dạng Payload JSON gọi dự báo đơn SKU và batch toàn bộ danh mục, cấu trúc dải tin cậy 95%. |
+| **Kế hoạch triển khai & Tiêu chuẩn nghiệm thu** | [`docs/07-implementation-plan/overview.md`](docs/07-implementation-plan/overview.md)<br>[`docs/07-implementation-plan/phase-details.md`](docs/07-implementation-plan/phase-details.md) | Lộ trình 7 Phase (Phase 0 $\rightarrow$ Phase 6), tiêu chí Definition of Done (DoD), checklist kiểm thử. |
 
 ---
 
-## 4. BẢNG TRA CỨU USE CASE $\leftrightarrow$ FILE TÀI LIỆU CHI TIẾT
+## 5. BẢNG TRA CỨU USE CASE $\leftrightarrow$ FILE TÀI LIỆU CHI TIẾT
 
 Khi được yêu cầu lập trình một Use Case cụ thể, hãy mở trực tiếp file Use Case tương ứng:
 
-| Mã Use Case | Tên Nghiệp Vụ Cốt Lõi | File Đặc Tả Chi Tiết Cần Đọc |
-| :---: | :--- | :--- |
-| **UC-001** | Quản lý danh mục sản phẩm | [`UC-001-quan-ly-danh-muc-san-pham.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-001-quan-ly-danh-muc-san-pham.md) |
-| **UC-002** | Quản lý danh mục nhà cung cấp & bảng giá | [`UC-002-quan-ly-danh-muc-nha-cung-cap.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-002-quan-ly-danh-muc-nha-cung-cap.md) |
-| **UC-003** | Nạp dữ liệu bán hàng & tồn kho (Excel/CSV) | [`UC-003-nap-du-lieu-ban-hang-va-ton-kho.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-003-nap-du-lieu-ban-hang-va-ton-kho.md) |
-| **UC-004** | Theo dõi tồn kho & cảnh báo 5 cấp rủi ro | [`UC-004-theo-doi-ton-kho-va-canh-bao-rui-ro.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-004-theo-doi-ton-kho-va-canh-bao-rui-ro.md) |
-| **UC-005** | Xem phân tích ma trận 9 ô ABC - XYZ | [`UC-005-xem-phan-tich-ma-tran-abc-xyz.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-005-xem-phan-tich-ma-tran-abc-xyz.md) |
-| **UC-006** | Xem chi tiết phân tích sản phẩm 360° | [`UC-006-xem-chi-tiet-phan-tich-san-pham.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-006-xem-chi-tiet-phan-tich-san-pham.md) |
-| **UC-007** | Xem dự báo nhu cầu bán lẻ AI (7/14/30 ngày) | [`UC-007-xem-du-bao-nhu-cau-ban-le.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-007-xem-du-bao-nhu-cau-ban-le.md) |
-| **UC-008** | Nhập lượng bán dự kiến cho SP mới Cold Start | [`UC-008-nhap-luong-ban-du-kien-cho-san-pham-moi.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-008-nhap-luong-ban-du-kien-cho-san-pham-moi.md) |
-| **UC-009** | Xem đánh giá & xếp hạng nhà cung cấp | [`UC-009-xem-danh-gia-va-xep-hang-nha-cung-cap.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-009-xem-danh-gia-va-xep-hang-nha-cung-cap.md) |
-| **UC-010** | Xem khuyến nghị mua hàng thông minh (Explainable)| [`UC-010-xem-khuyen-nghi-mua-hang-thong-minh.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-010-xem-khuyen-nghi-mua-hang-thong-minh.md) |
-| **UC-011** | Chạy lại phân tích & cập nhật DSS on-demand | [`UC-011-chay-lai-phan-tich-va-cap-nhat-khuyen-nghi.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-011-chay-lai-phan-tich-va-cap-nhat-khuyen-nghi.md) |
-| **UC-012** | Lập và xác nhận đơn mua hàng (PO DRAFT -> ORDERED)| [`UC-012-lap-va-xac-nhan-don-mua-hang.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-012-lap-va-xac-nhan-don-mua-hang.md) |
-| **UC-013** | Quản lý & tra cứu lịch sử đơn mua hàng / Hủy đơn | [`UC-013-quan-ly-va-tra-cuu-lich-su-don-mua-hang.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-013-quan-ly-va-tra-cuu-lich-su-don-mua-hang.md) |
-| **UC-014** | Ghi nhận nhận hàng & Cập nhật tồn kho nguyên tử | [`UC-014-ghi-nhan-nhan-hang-va-cap-nhat-ton-kho.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-014-ghi-nhan-nhan-hang-va-cap-nhat-ton-kho.md) |
-| **UC-015** | Đăng nhập & Quản lý phiên làm việc cá nhân | [`UC-015-dang-nhap-va-quan-ly-phien-lam-viec.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-015-dang-nhap-va-quan-ly-phien-lam-viec.md) |
-| **UC-016** | Quản lý tài khoản người dùng (CRUD, Khóa, Phân quyền)| [`UC-016-quan-ly-tai-khoan-nguoi-dung.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-016-quan-ly-tai-khoan-nguoi-dung.md) |
-| **UC-017** | Cấu hình trọng số đánh giá nhà cung cấp (Admin) | [`UC-017-cau-hinh-trong-so-danh-gia-nha-cung-cap.md`](file:///c:/my_project/dss-ai-purchase/docs/03-use-cases/UC-017-cau-hinh-trong-so-danh-gia-nha-cung-cap.md) |
+| Mã UC | Tên Use Case | Đường Dẫn Tài Liệu |
+| :--- | :--- | :--- |
+| **UC-001** | Quản lý danh mục sản phẩm (CRUD, Pack size, MOQ) | [`docs/03-use-cases/UC-001-quan-ly-danh-muc-san-pham.md`](docs/03-use-cases/UC-001-quan-ly-danh-muc-san-pham.md) |
+| **UC-002** | Quản lý danh mục nhà cung cấp & bảng giá theo SKU | [`docs/03-use-cases/UC-002-quan-ly-danh-muc-nha-cung-cap.md`](docs/03-use-cases/UC-002-quan-ly-danh-muc-nha-cung-cap.md) |
+| **UC-003** | Nạp dữ liệu bán hàng & tồn kho (Excel/CSV) | [`docs/03-use-cases/UC-003-nap-du-lieu-ban-hang-va-ton-kho.md`](docs/03-use-cases/UC-003-nap-du-lieu-ban-hang-va-ton-kho.md) |
+| **UC-004** | Theo dõi tồn kho & cảnh báo 5 cấp rủi ro | [`docs/03-use-cases/UC-004-theo-doi-ton-kho-va-canh-bao-rui-ro.md`](docs/03-use-cases/UC-004-theo-doi-ton-kho-va-canh-bao-rui-ro.md) |
+| **UC-005** | Xem phân tích ma trận 9 ô ABC - XYZ | [`docs/03-use-cases/UC-005-xem-phan-tich-ma-tran-abc-xyz.md`](docs/03-use-cases/UC-005-xem-phan-tich-ma-tran-abc-xyz.md) |
+| **UC-006** | Xem chi tiết phân tích sản phẩm 360° | [`docs/03-use-cases/UC-006-xem-chi-tiet-phan-tich-san-pham.md`](docs/03-use-cases/UC-006-xem-chi-tiet-phan-tich-san-pham.md) |
+| **UC-007** | Xem dự báo nhu cầu bán lẻ AI (7/14/30 ngày) | [`docs/03-use-cases/UC-007-xem-du-bao-nhu-cau-ban-le.md`](docs/03-use-cases/UC-007-xem-du-bao-nhu-cau-ban-le.md) |
+| **UC-008** | Nhập lượng bán dự kiến cho SP mới Cold Start | [`docs/03-use-cases/UC-008-nhap-luong-ban-du-kien-cho-san-pham-moi.md`](docs/03-use-cases/UC-008-nhap-luong-ban-du-kien-cho-san-pham-moi.md) |
+| **UC-009** | Xem đánh giá & xếp hạng nhà cung cấp | [`docs/03-use-cases/UC-009-xem-danh-gia-va-xep-hang-nha-cung-cap.md`](docs/03-use-cases/UC-009-xem-danh-gia-va-xep-hang-nha-cung-cap.md) |
+| **UC-010** | Xem khuyến nghị mua hàng thông minh (Explainable)| [`docs/03-use-cases/UC-010-xem-khuyen-nghi-mua-hang-thong-minh.md`](docs/03-use-cases/UC-010-xem-khuyen-nghi-mua-hang-thong-minh.md) |
+| **UC-011** | Chạy lại phân tích & cập nhật DSS on-demand | [`docs/03-use-cases/UC-011-chay-lai-phan-tich-va-cap-nhat-khuyen-nghi.md`](docs/03-use-cases/UC-011-chay-lai-phan-tich-va-cap-nhat-khuyen-nghi.md) |
+| **UC-012** | Lập và xác nhận đơn mua hàng (PO DRAFT -> ORDERED)| [`docs/03-use-cases/UC-012-lap-va-xac-nhan-don-mua-hang.md`](docs/03-use-cases/UC-012-lap-va-xac-nhan-don-mua-hang.md) |
+| **UC-013** | Quản lý & tra cứu lịch sử đơn mua hàng / Hủy đơn | [`docs/03-use-cases/UC-013-quan-ly-va-tra-cuu-lich-su-don-mua-hang.md`](docs/03-use-cases/UC-013-quan-ly-va-tra-cuu-lich-su-don-mua-hang.md) |
+| **UC-014** | Ghi nhận nhận hàng & Cập nhật tồn kho nguyên tử | [`docs/03-use-cases/UC-014-ghi-nhan-nhan-hang-va-cap-nhat-ton-kho.md`](docs/03-use-cases/UC-014-ghi-nhan-nhan-hang-va-cap-nhat-ton-kho.md) |
+| **UC-015** | Đăng nhập & Quản lý phiên làm việc cá nhân | [`docs/03-use-cases/UC-015-dang-nhap-va-quan-ly-phien-lam-viec.md`](docs/03-use-cases/UC-015-dang-nhap-va-quan-ly-phien-lam-viec.md) |
+| **UC-016** | Quản lý tài khoản người dùng (CRUD, Khóa, Phân quyền)| [`docs/03-use-cases/UC-016-quan-ly-tai-khoan-nguoi-dung.md`](docs/03-use-cases/UC-016-quan-ly-tai-khoan-nguoi-dung.md) |
+| **UC-017** | Cấu hình trọng số đánh giá nhà cung cấp (Admin) | [`docs/03-use-cases/UC-017-cau-hinh-trong-so-danh-gia-nha-cung-cap.md`](docs/03-use-cases/UC-017-cau-hinh-trong-so-danh-gia-nha-cung-cap.md) |
 
 ---
 
-## 5. QUY CHUẨN ĐẶT TÊN & ĐỊNH DẠNG MÃ NGUỒN (CODE CONVENTIONS)
+## 6. QUY CHUẨN ĐẶT TÊN & ĐỊNH DẠNG MÃ NGUỒN (CODE CONVENTIONS)
 
 1. **Ngôn ngữ trong mã nguồn:**
    * Mã nguồn, biến, hàm, class, comments kỹ thuật: **Tiếng Anh 100%**.
@@ -110,21 +171,24 @@ Khi được yêu cầu lập trình một Use Case cụ thể, hãy mở trực
    * Biến, hàm, thuộc tính: `camelCase` (ví dụ: `calculateSafetyStock`, `onHand`, `totalAmount`).
    * Tên bảng CSDL, tên cột SQL: `snake_case` (ví dụ: `purchase_orders`, `committed_lead_time`).
    * Tên file React Component: `PascalCase.tsx` (ví dụ: `KpiRiskCards.tsx`).
-   * Tên file Service, Controller, Router: `camelCase.ts` (ví dụ: `productController.ts`).
+   * Tên file Service, Controller, Router: `camelCase.ts` hoặc `PascalCase.ts` theo chuẩn Clean Architecture (`productRoutes.ts`, `ProductController.ts`, `CreateProductUseCase.ts`).
    * Tên hằng số, ENUM values: `UPPER_SNAKE_CASE` (ví dụ: `OUT_OF_STOCK`, `ORDERED`).
 3. **Mã sinh tự động:**
    * Mã đơn mua hàng: Bắt buộc định dạng `PO-YYYYMMDD-XXXX` (ví dụ: `PO-20260904-0001`) (`BR-024`).
 
 ---
 
-## 6. BẢNG KIỂM TRA TRƯỚC KHI BÀN GIAO MÃ NGUỒN (AGENT PRE-SUBMISSION CHECKLIST)
+## 7. BẢNG KIỂM TRA TRƯỚC KHI BÀN GIAO MÃ NGUỒN (AGENT PRE-SUBMISSION CHECKLIST)
 
 Trước khi xác nhận hoàn thành một tác vụ viết code, Agent phải tự kiểm tra:
 
-- [ ] Tôi đã đọc đúng tài liệu được liên kết trong Section 3 & 4 chưa?
-- [ ] Tên các trường cơ sở dữ liệu có khớp 100% với `data-dictionary.md` không?
+- [ ] Tôi đã đọc đúng tài liệu được liên kết trong Section 4 & 5 chưa?
+- [ ] Kế hoạch thực hiện đã được chia nhỏ và được User duyệt trước khi viết code chưa? (Giai đoạn 1)
+- [ ] Tên các trường cơ sở dữ liệu có khớp 100% với `docs/04-data-model/data-dictionary.md` không?
+- [ ] Tôi đã đối chiếu chéo (Cross-check) giữa DB DDL, Prisma Schema, Domain Entity và Frontend Types chưa? (Giai đoạn 3)
 - [ ] Tầng Domain có hoàn toàn độc lập, không bị phụ thuộc vào Express hay Prisma không?
 - [ ] Phản hồi của API có tuân thủ đúng Envelope `{ success, data, meta, timestamp }` không?
 - [ ] Dịch vụ AI Python có giữ đúng bản chất Stateless, không kết nối trực tiếp CSDL không?
 - [ ] Thao tác nhận hàng (`UC-014`) có được bọc trong giao dịch nguyên tử (`prisma.$transaction`) không?
+- [ ] Tôi đã rà soát các bug ngầm (chia cho 0, null/undefined, làm tròn MOQ, timeout fallback) chưa? (Giai đoạn 4)
 - [ ] Có tự ý phát sinh thêm thư viện ngoài phạm vi đã thống nhất không?
