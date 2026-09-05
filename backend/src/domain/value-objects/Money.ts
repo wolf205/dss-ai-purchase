@@ -1,13 +1,14 @@
+import { DomainException } from '../exceptions/DomainException';
 export class Money {
   private readonly _amount: number;
 
   constructor(amount: number) {
     if (typeof amount !== 'number' || isNaN(amount) || !isFinite(amount)) {
-      throw new Error('Số tiền không hợp lệ');
+      throw new DomainException('Số tiền không hợp lệ', 'BUSINESS_RULE_VIOLATION');
     }
 
     if (amount < 0) {
-      throw new Error('Số tiền không được là số âm');
+      throw new DomainException('Số tiền không được là số âm', 'BUSINESS_RULE_VIOLATION');
     }
 
     // Standardize to 2 decimal places max
@@ -25,7 +26,7 @@ export class Money {
 
   public multiply(quantity: number): Money {
     if (quantity < 0) {
-      throw new Error('Số lượng nhân không được âm');
+      throw new DomainException('Số lượng nhân không được âm', 'BUSINESS_RULE_VIOLATION');
     }
     return new Money(this._amount * quantity);
   }

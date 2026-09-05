@@ -112,6 +112,14 @@ Hệ thống phân tách lỗi nghiêm ngặt thành 2 cấp độ, cấm lẫn 
   }
   ```
 
+### 2.4. Hợp Đồng Tầng Presentation (Controllers & Routes)
+Nhằm đảm bảo tính Testable và bám sát nguyên lý Inversion of Control:
+1. **Cấm khởi tạo toàn cục (No Global Instantiation):** Các Controller không được phép tự khởi tạo (dùng `new`) các Dependencies (như Use Cases, Repositories) ở cấp độ Module hoặc bên trong hàm.
+2. **Tiêm phụ thuộc thủ công (Manual Constructor Injection):** Mọi Controller phải tiêm các dependencies thông qua `constructor`.
+3. **Cấm dùng Static Method:** Các phương thức xử lý (handler) của Controller phải là properties (arrow function) hoặc instance method, không được dùng `static`.
+4. **Composition Root (DI Container):** Tệp `infrastructure/di/container.ts` đóng vai trò là Composition Root duy nhất của toàn bộ ứng dụng. Đây là NƠI DUY NHẤT được phép `new` các Repository, Use Case, UnitOfWork và tiêm chúng vào Controller. Các tệp định tuyến (Routes) tuyệt đối không tự khởi tạo phụ thuộc mà chỉ import Controller đã được cấu hình sẵn từ `container.ts`.
+5. **CatchAsync Wrapper:** Không viết lại khối `try/catch` vô nghĩa trong Controller. Mọi hàm xử lý phải được bọc trong middleware `catchAsync` để gom lỗi về Error Middleware tập trung.
+
 ---
 
 ## 3. HỢP ĐỒNG TOÀN VẸN DỮ LIỆU, GIAO DỊCH & DỊCH VỤ AI

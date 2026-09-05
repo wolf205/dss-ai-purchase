@@ -1,3 +1,4 @@
+import { DomainException } from '../exceptions/DomainException';
 export type SupplierStatusTag = 'NEW_SUPPLIER' | 'ACTIVE';
 
 export interface SupplierProps {
@@ -27,13 +28,13 @@ export class Supplier {
 
   constructor(props: SupplierProps) {
     if (!props.code || !props.code.trim()) {
-      throw new Error('Mã nhà cung cấp không được để trống');
+      throw new DomainException('Mã nhà cung cấp không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     if (!props.name || !props.name.trim()) {
-      throw new Error('Tên nhà cung cấp không được để trống');
+      throw new DomainException('Tên nhà cung cấp không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     if (!props.phone || !props.phone.trim()) {
-      throw new Error('Số điện thoại nhà cung cấp không được để trống');
+      throw new DomainException('Số điện thoại nhà cung cấp không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
 
     this.id = props.id;
@@ -84,11 +85,11 @@ export class Supplier {
     statusTag?: SupplierStatusTag;
   }): void {
     if (params.name !== undefined) {
-      if (!params.name.trim()) throw new Error('Tên nhà cung cấp không được để trống');
+      if (!params.name.trim()) throw new DomainException('Tên nhà cung cấp không được để trống', 'BUSINESS_RULE_VIOLATION');
       this._name = params.name.trim();
     }
     if (params.phone !== undefined) {
-      if (!params.phone.trim()) throw new Error('Số điện thoại không được để trống');
+      if (!params.phone.trim()) throw new DomainException('Số điện thoại không được để trống', 'BUSINESS_RULE_VIOLATION');
       this._phone = params.phone.trim();
     }
     if (params.email !== undefined) {

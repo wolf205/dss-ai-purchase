@@ -1,3 +1,4 @@
+import { DomainException } from '../exceptions/DomainException';
 export type UserRole = 'ADMIN' | 'STAFF';
 
 export interface UserProps {
@@ -79,7 +80,7 @@ export class User {
 
   public updateProfile(fullName: string, email: string): void {
     if (!fullName.trim() || !email.trim()) {
-      throw new Error('Họ tên và email không được để trống');
+      throw new DomainException('Họ tên và email không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     this._fullName = fullName.trim();
     this._email = email.trim();

@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { ProductController } from '../controllers/ProductController';
+import { productController } from '../../infrastructure/di/container';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { rbacMiddleware } from '../middlewares/rbacMiddleware';
 import { validateBody, validateQuery } from '../middlewares/validateMiddleware';
+import { catchAsync } from '../middlewares/catchAsync';
 import {
   createProductSchema,
   updateProductSchema,
@@ -13,23 +14,23 @@ const router = Router();
 
 router.use(authMiddleware);
 
-router.get('/', validateQuery(productFilterSchema), ProductController.listProducts);
-router.get('/categories', ProductController.getCategories);
-router.get('/:sku', ProductController.getProductBySku);
+router.get('/', validateQuery(productFilterSchema), catchAsync(productController.listProducts));
+router.get('/categories', catchAsync(productController.getCategories));
+router.get('/:sku', catchAsync(productController.getProductBySku));
 
 // Admin-only mutation routes
 router.post(
   '/',
   rbacMiddleware(['ADMIN']),
   validateBody(createProductSchema),
-  ProductController.createProduct
+  catchAsync(productController.createProduct)
 );
 
 router.patch(
   '/:sku',
   rbacMiddleware(['ADMIN']),
   validateBody(updateProductSchema),
-  ProductController.updateProduct
+  catchAsync(productController.updateProduct)
 );
 
 export default router;

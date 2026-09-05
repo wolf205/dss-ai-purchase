@@ -1,3 +1,4 @@
+import { DomainException } from '../exceptions/DomainException';
 export interface ProductSupplierProps {
   id?: string;
   productSku: string;
@@ -25,13 +26,13 @@ export class ProductSupplier {
 
   constructor(props: ProductSupplierProps) {
     if (!props.productSku || !props.productSku.trim()) {
-      throw new Error('Mã SKU sản phẩm không được để trống');
+      throw new DomainException('Mã SKU sản phẩm không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     if (!props.supplierId || !props.supplierId.trim()) {
-      throw new Error('Mã ID nhà cung cấp không được để trống');
+      throw new DomainException('Mã ID nhà cung cấp không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     if (props.purchasePrice < 0) {
-      throw new Error('Giá nhập không được là số âm');
+      throw new DomainException('Giá nhập không được là số âm', 'BUSINESS_RULE_VIOLATION');
     }
 
     this.id = props.id;
@@ -78,7 +79,7 @@ export class ProductSupplier {
     isPreferred?: boolean;
   }): void {
     if (params.purchasePrice !== undefined) {
-      if (params.purchasePrice < 0) throw new Error('Giá nhập không được âm');
+      if (params.purchasePrice < 0) throw new DomainException('Giá nhập không được âm', 'BUSINESS_RULE_VIOLATION');
       this._purchasePrice = params.purchasePrice;
     }
     if (params.moq !== undefined) {

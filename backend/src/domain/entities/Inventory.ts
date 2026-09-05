@@ -1,3 +1,4 @@
+import { DomainException } from '../exceptions/DomainException';
 import { RiskLevel, RiskLevelEnum } from '../value-objects/RiskLevel';
 
 export interface InventoryProps {
@@ -30,7 +31,7 @@ export class Inventory {
 
   constructor(props: InventoryProps) {
     if (!props.productSku || !props.productSku.trim()) {
-      throw new Error('Mã SKU sản phẩm không được để trống');
+      throw new DomainException('Mã SKU sản phẩm không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
 
     this.productSku = props.productSku.trim().toUpperCase();
@@ -95,7 +96,7 @@ export class Inventory {
 
   public updateOnHand(newOnHand: number): void {
     if (newOnHand < 0) {
-      throw new Error('Số lượng tồn kho thực tế (On-Hand) không được là số âm');
+      throw new DomainException('Số lượng tồn kho thực tế (On-Hand) không được là số âm', 'BUSINESS_RULE_VIOLATION');
     }
     this._onHand = Math.floor(newOnHand);
     this.reevaluateRiskLevel();
@@ -103,7 +104,7 @@ export class Inventory {
   }
 
   public incrementOnHand(qty: number): void {
-    if (qty < 0) throw new Error('Số lượng cộng thêm không được âm');
+    if (qty < 0) throw new DomainException('Số lượng cộng thêm không được âm', 'BUSINESS_RULE_VIOLATION');
     this._onHand += Math.floor(qty);
     this.reevaluateRiskLevel();
     this._updatedAt = new Date();
@@ -111,7 +112,7 @@ export class Inventory {
 
   public updateOnOrder(newOnOrder: number): void {
     if (newOnOrder < 0) {
-      throw new Error('Số lượng hàng đang về (On-Order) không được là số âm');
+      throw new DomainException('Số lượng hàng đang về (On-Order) không được là số âm', 'BUSINESS_RULE_VIOLATION');
     }
     this._onOrder = Math.floor(newOnOrder);
     this._updatedAt = new Date();

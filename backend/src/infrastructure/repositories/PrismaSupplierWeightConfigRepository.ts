@@ -1,9 +1,10 @@
-import { prisma } from '../database/prisma';
+import { getPrismaClient } from '../database/prisma';
 import { SupplierWeightConfig } from '../../domain/entities/SupplierWeightConfig';
 import { ISupplierWeightConfigRepository } from '../../domain/repositories/ISupplierWeightConfigRepository';
 
 export class PrismaSupplierWeightConfigRepository implements ISupplierWeightConfigRepository {
   public async getLatest(): Promise<SupplierWeightConfig | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.supplierEvaluationWeight.findFirst({
       orderBy: { updatedAt: 'desc' },
     });
@@ -12,6 +13,7 @@ export class PrismaSupplierWeightConfigRepository implements ISupplierWeightConf
   }
 
   public async save(config: SupplierWeightConfig): Promise<SupplierWeightConfig> {
+    const prisma = getPrismaClient();
     const record = await prisma.supplierEvaluationWeight.upsert({
       where: { id: config.id ?? 1 },
       create: {

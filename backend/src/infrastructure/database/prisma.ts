@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
+import { AsyncLocalStorage } from 'async_hooks';
 
 let prismaInstance: PrismaClient;
 
@@ -18,4 +19,11 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 export const prisma = prismaInstance;
+export const transactionContext = new AsyncLocalStorage<Prisma.TransactionClient>();
+
+export function getPrismaClient(): Prisma.TransactionClient | PrismaClient {
+  const tx = transactionContext.getStore();
+  return tx || prisma;
+}
+
 export default prisma;

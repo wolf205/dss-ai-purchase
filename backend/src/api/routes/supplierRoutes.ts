@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { SupplierController } from '../controllers/SupplierController';
+import { supplierController } from '../../infrastructure/di/container';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { rbacMiddleware } from '../middlewares/rbacMiddleware';
 import { validateBody, validateQuery } from '../middlewares/validateMiddleware';
+import { catchAsync } from '../middlewares/catchAsync';
 import {
   createSupplierSchema,
   updateSupplierSchema,
@@ -16,39 +17,39 @@ const router = Router();
 router.use(authMiddleware);
 
 // Evaluation weights routes (UC-017)
-router.get('/weights', SupplierController.getEvaluationWeights);
+router.get('/weights', catchAsync(supplierController.getEvaluationWeights));
 router.put(
   '/weights',
   rbacMiddleware(['ADMIN']),
   validateBody(updateSupplierWeightsSchema),
-  SupplierController.updateEvaluationWeights
+  catchAsync(supplierController.updateEvaluationWeights)
 );
 
 // Supplier product terms routes (UC-002)
-router.get('/product/:sku', SupplierController.getSuppliersByProductSku);
+router.get('/product/:sku', catchAsync(supplierController.getSuppliersByProductSku));
 router.post(
   '/terms',
   rbacMiddleware(['ADMIN']),
   validateBody(productSupplierTermsSchema),
-  SupplierController.setProductSupplierTerms
+  catchAsync(supplierController.setProductSupplierTerms)
 );
 
 // General supplier CRUD routes (UC-002)
-router.get('/', validateQuery(supplierFilterSchema), SupplierController.listSuppliers);
-router.get('/:id', SupplierController.getSupplierById);
+router.get('/', validateQuery(supplierFilterSchema), catchAsync(supplierController.listSuppliers));
+router.get('/:id', catchAsync(supplierController.getSupplierById));
 
 router.post(
   '/',
   rbacMiddleware(['ADMIN']),
   validateBody(createSupplierSchema),
-  SupplierController.createSupplier
+  catchAsync(supplierController.createSupplier)
 );
 
 router.patch(
   '/:id',
   rbacMiddleware(['ADMIN']),
   validateBody(updateSupplierSchema),
-  SupplierController.updateSupplier
+  catchAsync(supplierController.updateSupplier)
 );
 
 export default router;

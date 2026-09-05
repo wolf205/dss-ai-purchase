@@ -1,16 +1,17 @@
+import { DomainException } from '../exceptions/DomainException';
 export class POCode {
   private readonly _value: string;
 
   constructor(value: string) {
     if (!value || typeof value !== 'string') {
-      throw new Error('Mã đơn hàng PO không được để trống');
+      throw new DomainException('Mã đơn hàng PO không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
 
     const trimmed = value.trim().toUpperCase();
     // Format PO-YYYYMMDD-XXXX (e.g. PO-20260904-0001)
     const poRegex = /^PO-\d{8}-[A-Z0-9]{4}$/;
     if (!poRegex.test(trimmed)) {
-      throw new Error('Mã đơn hàng PO không đúng định dạng chuẩn PO-YYYYMMDD-XXXX (ví dụ: PO-20260904-0001)');
+      throw new DomainException('Mã đơn hàng PO không đúng định dạng chuẩn PO-YYYYMMDD-XXXX (ví dụ: PO-20260904-0001)', 'BUSINESS_RULE_VIOLATION');
     }
 
     this._value = trimmed;

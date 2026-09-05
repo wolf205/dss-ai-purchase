@@ -1,9 +1,10 @@
-import { prisma } from '../database/prisma';
+import { getPrismaClient } from '../database/prisma';
 import { User, UserRole } from '../../domain/entities/User';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 
 export class PrismaUserRepository implements IUserRepository {
   public async findById(id: string): Promise<User | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.user.findUnique({
       where: { id },
     });
@@ -12,6 +13,7 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   public async findByUsername(username: string): Promise<User | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.user.findUnique({
       where: { username },
     });
@@ -20,6 +22,7 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   public async findByEmail(email: string): Promise<User | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.user.findUnique({
       where: { email },
     });
@@ -36,6 +39,7 @@ export class PrismaUserRepository implements IUserRepository {
       where.role = options.role as any;
     }
 
+    const prisma = getPrismaClient();
     const records = await prisma.user.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -58,12 +62,14 @@ export class PrismaUserRepository implements IUserRepository {
       data.id = user.id;
     }
 
+    const prisma = getPrismaClient();
     const record = await prisma.user.create({ data });
     return this.toDomain(record);
   }
 
   public async update(user: User): Promise<User> {
     if (!user.id) throw new Error('User ID is required for update');
+    const prisma = getPrismaClient();
     const record = await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -81,6 +87,7 @@ export class PrismaUserRepository implements IUserRepository {
 
   public async delete(id: string): Promise<boolean> {
     try {
+      const prisma = getPrismaClient();
       await prisma.user.delete({ where: { id } });
       return true;
     } catch {

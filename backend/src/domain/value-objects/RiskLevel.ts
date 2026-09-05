@@ -1,3 +1,4 @@
+import { DomainException } from '../exceptions/DomainException';
 export enum RiskLevelEnum {
   OUT_OF_STOCK = 'OUT_OF_STOCK',
   CRITICAL = 'CRITICAL',
@@ -12,7 +13,7 @@ export class RiskLevel {
   constructor(value: RiskLevelEnum | string) {
     const upperValue = value.toUpperCase() as RiskLevelEnum;
     if (!Object.values(RiskLevelEnum).includes(upperValue)) {
-      throw new Error(`Cấp độ rủi ro không hợp lệ: ${value}. Giá trị hợp lệ: OUT_OF_STOCK, CRITICAL, WARNING, NORMAL, OVERSTOCK`);
+      throw new DomainException(`Cấp độ rủi ro không hợp lệ: ${value}. Giá trị hợp lệ: OUT_OF_STOCK, CRITICAL, WARNING, NORMAL, OVERSTOCK`, 'BUSINESS_RULE_VIOLATION');
     }
     this._value = upperValue;
   }

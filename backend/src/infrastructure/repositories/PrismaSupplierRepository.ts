@@ -1,10 +1,11 @@
-import { prisma } from '../database/prisma';
+import { getPrismaClient } from '../database/prisma';
 import { Supplier, SupplierStatusTag } from '../../domain/entities/Supplier';
 import { ProductSupplier } from '../../domain/entities/ProductSupplier';
 import { ISupplierRepository, SupplierFilterOptions } from '../../domain/repositories/ISupplierRepository';
 
 export class PrismaSupplierRepository implements ISupplierRepository {
   public async findById(id: string): Promise<Supplier | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.supplier.findUnique({
       where: { id: BigInt(id) },
     });
@@ -13,6 +14,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
   }
 
   public async findByCode(code: string): Promise<Supplier | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.supplier.findUnique({
       where: { code: code.trim().toUpperCase() },
     });
@@ -35,6 +37,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
       ];
     }
 
+    const prisma = getPrismaClient();
     const [records, total] = await Promise.all([
       prisma.supplier.findMany({
         where,
@@ -52,6 +55,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
   }
 
   public async save(supplier: Supplier): Promise<Supplier> {
+    const prisma = getPrismaClient();
     const record = await prisma.supplier.create({
       data: {
         code: supplier.code,
@@ -68,6 +72,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
 
   public async update(supplier: Supplier): Promise<Supplier> {
     if (!supplier.id) throw new Error('Supplier ID is required for update');
+    const prisma = getPrismaClient();
     const record = await prisma.supplier.update({
       where: { id: BigInt(supplier.id) },
       data: {
@@ -83,6 +88,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
   }
 
   public async findProductSupplier(productSku: string, supplierId: string): Promise<ProductSupplier | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.productSupplier.findUnique({
       where: {
         productSku_supplierId: {
@@ -98,6 +104,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
   public async findSuppliersByProductSku(
     productSku: string
   ): Promise<{ supplier: Supplier; terms: ProductSupplier }[]> {
+    const prisma = getPrismaClient();
     const records = await prisma.productSupplier.findMany({
       where: { productSku: productSku.trim().toUpperCase() },
       include: { supplier: true },
@@ -111,6 +118,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
   }
 
   public async saveProductSupplier(terms: ProductSupplier): Promise<ProductSupplier> {
+    const prisma = getPrismaClient();
     const record = await prisma.productSupplier.create({
       data: {
         productSku: terms.productSku,
@@ -126,6 +134,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
   }
 
   public async updateProductSupplier(terms: ProductSupplier): Promise<ProductSupplier> {
+    const prisma = getPrismaClient();
     const record = await prisma.productSupplier.update({
       where: {
         productSku_supplierId: {
@@ -146,6 +155,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
 
   public async deleteProductSupplier(productSku: string, supplierId: string): Promise<boolean> {
     try {
+      const prisma = getPrismaClient();
       await prisma.productSupplier.delete({
         where: {
           productSku_supplierId: {

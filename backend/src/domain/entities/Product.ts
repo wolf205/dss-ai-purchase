@@ -1,3 +1,4 @@
+import { DomainException } from '../exceptions/DomainException';
 import { SKU } from '../value-objects/SKU';
 
 export interface ProductProps {
@@ -31,19 +32,19 @@ export class Product {
     this.sku = new SKU(props.sku);
     
     if (!props.name || !props.name.trim()) {
-      throw new Error('Tên sản phẩm không được để trống');
+      throw new DomainException('Tên sản phẩm không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     if (!props.category || !props.category.trim()) {
-      throw new Error('Danh mục sản phẩm không được để trống');
+      throw new DomainException('Danh mục sản phẩm không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     if (!props.unit || !props.unit.trim()) {
-      throw new Error('Đơn vị tính không được để trống');
+      throw new DomainException('Đơn vị tính không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     if (props.costPrice < 0) {
-      throw new Error('Giá vốn không được là số âm');
+      throw new DomainException('Giá vốn không được là số âm', 'BUSINESS_RULE_VIOLATION');
     }
     if (props.sellingPrice < 0) {
-      throw new Error('Giá bán không được là số âm');
+      throw new DomainException('Giá bán không được là số âm', 'BUSINESS_RULE_VIOLATION');
     }
 
     this._name = props.name.trim();
@@ -104,23 +105,23 @@ export class Product {
     minSafetyStock?: number;
   }): void {
     if (params.name !== undefined) {
-      if (!params.name.trim()) throw new Error('Tên sản phẩm không được để trống');
+      if (!params.name.trim()) throw new DomainException('Tên sản phẩm không được để trống', 'BUSINESS_RULE_VIOLATION');
       this._name = params.name.trim();
     }
     if (params.category !== undefined) {
-      if (!params.category.trim()) throw new Error('Danh mục không được để trống');
+      if (!params.category.trim()) throw new DomainException('Danh mục không được để trống', 'BUSINESS_RULE_VIOLATION');
       this._category = params.category.trim();
     }
     if (params.unit !== undefined) {
-      if (!params.unit.trim()) throw new Error('Đơn vị tính không được để trống');
+      if (!params.unit.trim()) throw new DomainException('Đơn vị tính không được để trống', 'BUSINESS_RULE_VIOLATION');
       this._unit = params.unit.trim();
     }
     if (params.costPrice !== undefined) {
-      if (params.costPrice < 0) throw new Error('Giá vốn không được âm');
+      if (params.costPrice < 0) throw new DomainException('Giá vốn không được âm', 'BUSINESS_RULE_VIOLATION');
       this._costPrice = params.costPrice;
     }
     if (params.sellingPrice !== undefined) {
-      if (params.sellingPrice < 0) throw new Error('Giá bán không được âm');
+      if (params.sellingPrice < 0) throw new DomainException('Giá bán không được âm', 'BUSINESS_RULE_VIOLATION');
       this._sellingPrice = params.sellingPrice;
     }
     if (params.defaultLeadTime !== undefined) {

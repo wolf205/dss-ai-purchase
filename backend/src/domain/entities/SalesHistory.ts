@@ -1,3 +1,4 @@
+import { DomainException } from '../exceptions/DomainException';
 export interface SalesHistoryProps {
   id?: string;
   productSku: string;
@@ -21,13 +22,13 @@ export class SalesHistory {
 
   constructor(props: SalesHistoryProps) {
     if (!props.productSku || !props.productSku.trim()) {
-      throw new Error('Mã SKU không được để trống');
+      throw new DomainException('Mã SKU không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     if (props.quantitySold < 0) {
-      throw new Error('Số lượng bán không được là số âm (BR-009)');
+      throw new DomainException('Số lượng bán không được là số âm (BR-009)', 'BUSINESS_RULE_VIOLATION');
     }
     if (props.revenue < 0) {
-      throw new Error('Doanh thu bán hàng không được là số âm');
+      throw new DomainException('Doanh thu bán hàng không được là số âm', 'BUSINESS_RULE_VIOLATION');
     }
 
     this.id = props.id;

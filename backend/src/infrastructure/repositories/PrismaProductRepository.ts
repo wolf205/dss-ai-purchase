@@ -1,9 +1,10 @@
-import { prisma } from '../database/prisma';
+import { getPrismaClient } from '../database/prisma';
 import { Product } from '../../domain/entities/Product';
 import { IProductRepository, ProductFilterOptions } from '../../domain/repositories/IProductRepository';
 
 export class PrismaProductRepository implements IProductRepository {
   public async findBySku(sku: string): Promise<Product | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.product.findUnique({
       where: { sku: sku.trim().toUpperCase() },
     });
@@ -26,6 +27,7 @@ export class PrismaProductRepository implements IProductRepository {
       ];
     }
 
+    const prisma = getPrismaClient();
     const [records, total] = await Promise.all([
       prisma.product.findMany({
         where,
@@ -43,6 +45,7 @@ export class PrismaProductRepository implements IProductRepository {
   }
 
   public async findAllCategories(): Promise<string[]> {
+    const prisma = getPrismaClient();
     const result = await prisma.product.findMany({
       select: { category: true },
       distinct: ['category'],
@@ -52,6 +55,7 @@ export class PrismaProductRepository implements IProductRepository {
   }
 
   public async save(product: Product): Promise<Product> {
+    const prisma = getPrismaClient();
     const record = await prisma.product.create({
       data: {
         sku: product.sku.value,
@@ -69,6 +73,7 @@ export class PrismaProductRepository implements IProductRepository {
   }
 
   public async update(product: Product): Promise<Product> {
+    const prisma = getPrismaClient();
     const record = await prisma.product.update({
       where: { sku: product.sku.value },
       data: {
@@ -86,6 +91,7 @@ export class PrismaProductRepository implements IProductRepository {
   }
 
   public async exists(sku: string): Promise<boolean> {
+    const prisma = getPrismaClient();
     const count = await prisma.product.count({
       where: { sku: sku.trim().toUpperCase() },
     });

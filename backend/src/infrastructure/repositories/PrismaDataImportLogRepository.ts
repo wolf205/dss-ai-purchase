@@ -1,9 +1,10 @@
-import { prisma } from '../database/prisma';
+import { getPrismaClient } from '../database/prisma';
 import { DataImportLog, ImportStatus, ImportType } from '../../domain/entities/DataImportLog';
 import { IDataImportLogRepository } from '../../domain/repositories/IDataImportLogRepository';
 
 export class PrismaDataImportLogRepository implements IDataImportLogRepository {
   public async findById(id: string): Promise<DataImportLog | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.dataImportLog.findUnique({
       where: { id },
     });
@@ -12,6 +13,7 @@ export class PrismaDataImportLogRepository implements IDataImportLogRepository {
   }
 
   public async findAll(options?: { limit?: number; offset?: number }): Promise<{ logs: DataImportLog[]; total: number }> {
+    const prisma = getPrismaClient();
     const [records, total] = await Promise.all([
       prisma.dataImportLog.findMany({
         take: options?.limit,
@@ -28,6 +30,7 @@ export class PrismaDataImportLogRepository implements IDataImportLogRepository {
   }
 
   public async save(log: DataImportLog): Promise<DataImportLog> {
+    const prisma = getPrismaClient();
     const record = await prisma.dataImportLog.create({
       data: {
         id: log.id,

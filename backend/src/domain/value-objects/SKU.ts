@@ -1,20 +1,21 @@
+import { DomainException } from '../exceptions/DomainException';
 export class SKU {
   private readonly _value: string;
 
   constructor(value: string) {
     if (!value || typeof value !== 'string') {
-      throw new Error('Mã SKU không được để trống');
+      throw new DomainException('Mã SKU không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
 
     const trimmed = value.trim().toUpperCase();
     if (trimmed.length < 2 || trimmed.length > 50) {
-      throw new Error('Mã SKU phải có độ dài từ 2 đến 50 ký tự');
+      throw new DomainException('Mã SKU phải có độ dài từ 2 đến 50 ký tự', 'BUSINESS_RULE_VIOLATION');
     }
 
     // SKU must be alphanumeric with optional hyphens or underscores
     const skuRegex = /^[A-Z0-9_-]+$/;
     if (!skuRegex.test(trimmed)) {
-      throw new Error('Mã SKU chỉ được chứa chữ cái, chữ số, dấu gạch nối (-) hoặc gạch dưới (_)');
+      throw new DomainException('Mã SKU chỉ được chứa chữ cái, chữ số, dấu gạch nối (-) hoặc gạch dưới (_)', 'BUSINESS_RULE_VIOLATION');
     }
 
     this._value = trimmed;

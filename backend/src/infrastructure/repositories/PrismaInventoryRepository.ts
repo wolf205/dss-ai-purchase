@@ -1,10 +1,11 @@
-import { prisma } from '../database/prisma';
+import { getPrismaClient } from '../database/prisma';
 import { Inventory } from '../../domain/entities/Inventory';
 import { IInventoryRepository, InventoryFilterOptions } from '../../domain/repositories/IInventoryRepository';
 import { RiskLevelEnum } from '../../domain/value-objects/RiskLevel';
 
 export class PrismaInventoryRepository implements IInventoryRepository {
   public async findByProductSku(productSku: string): Promise<Inventory | null> {
+    const prisma = getPrismaClient();
     const record = await prisma.inventory.findUnique({
       where: { productSku: productSku.trim().toUpperCase() },
     });
@@ -27,6 +28,7 @@ export class PrismaInventoryRepository implements IInventoryRepository {
       ];
     }
 
+    const prisma = getPrismaClient();
     const [records, total] = await Promise.all([
       prisma.inventory.findMany({
         where,
@@ -44,6 +46,7 @@ export class PrismaInventoryRepository implements IInventoryRepository {
   }
 
   public async save(inventory: Inventory): Promise<Inventory> {
+    const prisma = getPrismaClient();
     const record = await prisma.inventory.upsert({
       where: { productSku: inventory.productSku },
       create: {
@@ -76,6 +79,7 @@ export class PrismaInventoryRepository implements IInventoryRepository {
   }
 
   public async update(inventory: Inventory): Promise<Inventory> {
+    const prisma = getPrismaClient();
     const record = await prisma.inventory.update({
       where: { productSku: inventory.productSku },
       data: {
@@ -105,6 +109,7 @@ export class PrismaInventoryRepository implements IInventoryRepository {
   }
 
   public async updateOnOrder(productSku: string, delta: number): Promise<Inventory> {
+    const prisma = getPrismaClient();
     const record = await prisma.inventory.update({
       where: { productSku: productSku.trim().toUpperCase() },
       data: {

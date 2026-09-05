@@ -1,4 +1,4 @@
-import { prisma } from '../database/prisma';
+import { getPrismaClient } from '../database/prisma';
 import { SalesHistory } from '../../domain/entities/SalesHistory';
 import { ISalesHistoryRepository } from '../../domain/repositories/ISalesHistoryRepository';
 
@@ -16,6 +16,7 @@ export class PrismaSalesHistoryRepository implements ISalesHistoryRepository {
       if (options.endDate) where.saleDate.lte = options.endDate;
     }
 
+    const prisma = getPrismaClient();
     const records = await prisma.salesHistory.findMany({
       where,
       orderBy: { saleDate: 'asc' },
@@ -36,6 +37,7 @@ export class PrismaSalesHistoryRepository implements ISalesHistoryRepository {
       importBatchId: r.importBatchId ?? undefined,
     }));
 
+    const prisma = getPrismaClient();
     const result = await prisma.salesHistory.createMany({
       data,
       skipDuplicates: true,
@@ -52,6 +54,7 @@ export class PrismaSalesHistoryRepository implements ISalesHistoryRepository {
     startDate.setDate(startDate.getDate() - daysCount);
     startDate.setHours(0, 0, 0, 0);
 
+    const prisma = getPrismaClient();
     const records = await prisma.salesHistory.findMany({
       where: {
         productSku: productSku.trim().toUpperCase(),

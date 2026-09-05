@@ -1,3 +1,4 @@
+import { DomainException } from '../exceptions/DomainException';
 export class WeightDistribution {
   public readonly weightPrice: number;
   public readonly weightOtif: number;
@@ -16,18 +17,18 @@ export class WeightDistribution {
       typeof weightQuality !== 'number' ||
       typeof weightLeadTime !== 'number'
     ) {
-      throw new Error('Các giá trị trọng số phải là kiểu số');
+      throw new DomainException('Các giá trị trọng số phải là kiểu số', 'BUSINESS_RULE_VIOLATION');
     }
 
     if (weightPrice < 0 || weightOtif < 0 || weightQuality < 0 || weightLeadTime < 0) {
-      throw new Error('Trọng số đánh giá nhà cung cấp không được âm');
+      throw new DomainException('Trọng số đánh giá nhà cung cấp không được âm', 'BUSINESS_RULE_VIOLATION');
     }
 
     const sum = weightPrice + weightOtif + weightQuality + weightLeadTime;
     // Allow slight floating point tolerance: |sum - 1.0| <= 0.001 (or sum === 100)
     const normalizedSum = Math.abs(sum - 1.0) < 0.001 ? 1.0 : sum;
     if (Math.abs(normalizedSum - 1.0) >= 0.001 && Math.abs(sum - 100.0) >= 0.001) {
-      throw new Error(`Tổng các trọng số đánh giá phải bằng 1.00 (hoặc 100%). Hiện tại tổng là: ${sum}`);
+      throw new DomainException(`Tổng các trọng số đánh giá phải bằng 1.00 (hoặc 100%). Hiện tại tổng là: ${sum}`, 'BUSINESS_RULE_VIOLATION');
     }
 
     if (Math.abs(sum - 100.0) < 0.001) {

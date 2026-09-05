@@ -1,5 +1,6 @@
 import { IProductRepository } from '../../../domain/repositories/IProductRepository';
 import { IInventoryRepository } from '../../../domain/repositories/IInventoryRepository';
+import { IUnitOfWork } from '../../ports/IUnitOfWork';
 import { CreateProductRequestDTO, ProductResponseDTO } from '../../dtos/ProductDTO';
 import { Product } from '../../../domain/entities/Product';
 import { Inventory } from '../../../domain/entities/Inventory';
@@ -8,7 +9,8 @@ import { ValidationException, DuplicateResourceException } from '../../exception
 export class CreateProductUseCase {
   constructor(
     private readonly productRepository: IProductRepository,
-    private readonly inventoryRepository: IInventoryRepository
+    private readonly inventoryRepository: IInventoryRepository,
+    private readonly unitOfWork: IUnitOfWork
   ) {}
 
   public async execute(dto: CreateProductRequestDTO): Promise<ProductResponseDTO> {
@@ -33,16 +35,20 @@ export class CreateProductUseCase {
       minSafetyStock: dto.minSafetyStock,
     });
 
-    const saved = await this.productRepository.save(product);
+    const saved = await this.unitOfWork.executeInTransaction(async () => {
+      const savedProduct = await this.productRepository.save(product);
 
-    // Initialize inventory for this product
-    const inventory = new Inventory({
-      productSku: saved.sku.value,
-      onHand: 0,
-      onOrder: 0,
-      safetyStock: saved.minSafetyStock,
+      // Initialize inventory for this product
+      const inventory = new Inventory({
+        productSku: savedProduct.sku.value,
+        onHand: 0,
+        onOrder: 0,
+        safetyStock: savedProduct.minSafetyStock,
+      });
+      await this.inventoryRepository.save(inventory);
+      
+      return savedProduct;
     });
-    await this.inventoryRepository.save(inventory);
 
     return {
       sku: saved.sku.value,
