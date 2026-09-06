@@ -263,7 +263,7 @@ Trước khi thực hiện một tác vụ cụ thể, Agent hãy mở chính x�
 | **Thiết kế Giao diện Frontend React** | [`docs/05-architecture/frontend-architecture.md`](docs/05-architecture/frontend-architecture.md) | Cấu trúc Feature-based, bảng màu 5 cấp độ rủi ro tồn kho, biểu đồ ECharts 9 ô ABC-XYZ và dải mây dự báo. |
 | **Quy chuẩn API Endpoint & Mã lỗi** | [`docs/06-api-design/endpoints-spec.md`](docs/06-api-design/endpoints-spec.md)<br>[`docs/06-api-design/openapi.yaml`](docs/06-api-design/openapi.yaml) | Chuẩn Envelope phản hồi `{ success, data, meta, timestamp }`, quy chuẩn mã lỗi HTTP & Error Codes. |
 | **Hợp đồng giao tiếp Backend <-> AI Service** | [`docs/06-api-design/internal-ai-contracts.md`](docs/06-api-design/internal-ai-contracts.md) | Định dạng Payload JSON gọi dự báo đơn SKU và batch toàn bộ danh mục, cấu trúc dải tin cậy 95%. |
-| **Kế hoạch triển khai & Tiêu chuẩn nghiệm thu** | [`docs/07-implementation-plan/overview.md`](docs/07-implementation-plan/overview.md)<br>[`docs/07-implementation-plan/phase-details.md`](docs/07-implementation-plan/phase-details.md) | Lộ trình 7 Phase (Phase 0 $\rightarrow$ Phase 6), tiêu chí Definition of Done (DoD), checklist kiểm thử. |
+| **Kế hoạch triển khai & Tiêu chuẩn nghiệm thu** | [`docs/07-implementation-plan/overview.md`](docs/07-implementation-plan/overview.md) | Lộ trình 7 Phase. Khi làm bất kỳ Phase nào, Agent hãy lấy chủ đề tổng quát trong file này, sau đó tự đọc, phân tích và vạch ra chi tiết công việc cần làm dựa trên các tài liệu Business Rules, Use Cases, và Schema. |
 
 ---
 
