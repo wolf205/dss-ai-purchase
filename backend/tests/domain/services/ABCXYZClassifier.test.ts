@@ -42,7 +42,7 @@ describe('ABCXYZClassifier', () => {
       const result = ABCXYZClassifier.classifyABC(items);
 
       expect(result.get('sku-1')).toBe('A');
-      expect(result.get('sku-2')).toBe('A'); // Because cumulative = 100, but wait!
+      expect(result.get('sku-2')).toBe('C');
       // Let's trace:
       // totalRevenue = 100
       // sorted: sku-1(100), sku-2(-50)

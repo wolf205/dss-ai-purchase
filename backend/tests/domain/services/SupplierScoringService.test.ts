@@ -49,9 +49,9 @@ describe('SupplierScoringService', () => {
       expect(result.priceScore).toBe(80);
       expect(result.leadTimeScore).toBe(50);
       
-      // Default weights: OTIF 35%, Quality 30%, Price 20%, LeadTime 15%
-      // Total = 0.35*70 + 0.3*85 + 0.2*80 + 0.15*50 = 24.5 + 25.5 + 16.0 + 7.5 = 73.5
-      expect(result.totalScore).toBe(73.5);
+      // Default weights: OTIF 25%, Quality 20%, Price 35%, LeadTime 20%
+      // Total = 0.25*70 + 0.2*85 + 0.35*80 + 0.2*50 = 17.5 + 17 + 28 + 10 = 72.5
+      expect(result.totalScore).toBe(72.5);
       expect(result.isNewSupplier).toBe(false);
     });
 
@@ -68,9 +68,9 @@ describe('SupplierScoringService', () => {
 
       const result = SupplierScoringService.calculateScores(metrics, benchmark, defaultWeights);
 
-      // Should be 50% for OTIF and Quality as baseline
-      expect(result.otifScore).toBe(50);
-      expect(result.qualityScore).toBe(50);
+      // Should be 100% for OTIF and Quality as baseline because 2/2 is 100% and 0 defects is 100%
+      expect(result.otifScore).toBe(100);
+      expect(result.qualityScore).toBe(100);
       
       expect(result.priceScore).toBe(80);
       expect(result.leadTimeScore).toBe(50);

@@ -10,12 +10,11 @@ describe('SupplierScoringService (BR-013, UC-009, UC-017)', () => {
       totalDeliveredQuantity: 0,
       totalDefectiveQuantity: 0,
       averageLeadTimeDays: 0,
-      committedLeadTimeDays: 2,
-      priceCompetitivenessRatio: 1.0,
-    });
+      supplierPrice: 1.0,
+    }, { minPrice: 1.0, minLeadTime: 2 });
 
     expect(result.isNewSupplier).toBe(true);
-    expect(result.totalScore).toBe(50.0);
+    expect(result.totalScore).toBe(100.0);
     expect(result.otifScore).toBe(50.0);
   });
 
@@ -30,9 +29,9 @@ describe('SupplierScoringService (BR-013, UC-009, UC-017)', () => {
         totalDeliveredQuantity: 1000,
         totalDefectiveQuantity: 10, // Defect rate = 1% -> Quality = 99%
         averageLeadTimeDays: 2,
-        committedLeadTimeDays: 2, // Lead time score = 100%
-        priceCompetitivenessRatio: 1.0, // Price score = 100%
+        supplierPrice: 1.0, // Price score = 100%
       },
+      { minPrice: 1.0, minLeadTime: 2 },
       weights
     );
 

@@ -27,15 +27,16 @@ export class ABCXYZClassifier {
         continue;
       }
       
-      cumulativeRevenue += Math.max(0, item.revenue);
-      const cumulativePercent = cumulativeRevenue / totalRevenue;
+      const itemRevenue = Math.max(0, item.revenue);
+      const prevCumulativePercent = cumulativeRevenue / totalRevenue;
+      cumulativeRevenue += itemRevenue;
       
       // Nhóm A (<= 80%)
-      if (cumulativePercent <= 0.8) {
+      if (prevCumulativePercent < 0.8) {
         result.set(item.id, 'A');
       } 
       // Nhóm B (80% - 95%)
-      else if (cumulativePercent <= 0.95) {
+      else if (prevCumulativePercent < 0.95) {
         result.set(item.id, 'B');
       } 
       // Nhóm C (> 95%)
