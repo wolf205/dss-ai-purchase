@@ -112,3 +112,58 @@ export const dataImportController = new DataImportController(
   importSalesInventoryUseCase,
   dataImportLogRepository
 );
+
+// ==========================================
+// 4. PURCHASE ORDERS
+// ==========================================
+import { PrismaPurchaseOrderRepository } from '../repositories/PrismaPurchaseOrderRepository';
+import { PrismaDeliveryHistoryRepository } from '../repositories/PrismaDeliveryHistoryRepository';
+import { CreatePurchaseOrderUseCase } from '../../application/use-cases/purchase-orders/CreatePurchaseOrderUseCase';
+import { GetPurchaseOrdersUseCase } from '../../application/use-cases/purchase-orders/GetPurchaseOrdersUseCase';
+import { GetPurchaseOrderByIdUseCase } from '../../application/use-cases/purchase-orders/GetPurchaseOrderByIdUseCase';
+import { ConfirmPurchaseOrderUseCase } from '../../application/use-cases/purchase-orders/ConfirmPurchaseOrderUseCase';
+import { CancelPurchaseOrderUseCase } from '../../application/use-cases/purchase-orders/CancelPurchaseOrderUseCase';
+import { ReceiveGoodsUseCase } from '../../application/use-cases/purchase-orders/ReceiveGoodsUseCase';
+import { PurchaseOrderController } from '../../api/controllers/PurchaseOrderController';
+
+const purchaseOrderRepository = new PrismaPurchaseOrderRepository();
+const deliveryHistoryRepository = new PrismaDeliveryHistoryRepository();
+
+const createPurchaseOrderUseCase = new CreatePurchaseOrderUseCase(
+  purchaseOrderRepository,
+  supplierRepository,
+  productRepository,
+  unitOfWork
+);
+
+const getPurchaseOrdersUseCase = new GetPurchaseOrdersUseCase(purchaseOrderRepository);
+
+const getPurchaseOrderByIdUseCase = new GetPurchaseOrderByIdUseCase(purchaseOrderRepository);
+
+const confirmPurchaseOrderUseCase = new ConfirmPurchaseOrderUseCase(
+  purchaseOrderRepository,
+  inventoryRepository,
+  unitOfWork
+);
+
+const cancelPurchaseOrderUseCase = new CancelPurchaseOrderUseCase(
+  purchaseOrderRepository,
+  inventoryRepository,
+  unitOfWork
+);
+
+const receiveGoodsUseCase = new ReceiveGoodsUseCase(
+  purchaseOrderRepository,
+  inventoryRepository,
+  deliveryHistoryRepository,
+  unitOfWork
+);
+
+export const purchaseOrderController = new PurchaseOrderController(
+  createPurchaseOrderUseCase,
+  getPurchaseOrdersUseCase,
+  getPurchaseOrderByIdUseCase,
+  confirmPurchaseOrderUseCase,
+  cancelPurchaseOrderUseCase,
+  receiveGoodsUseCase
+);
