@@ -7,8 +7,12 @@ export interface SupplierPerformanceMetrics {
   totalDeliveredQuantity: number;
   totalDefectiveQuantity: number;
   averageLeadTimeDays: number;
-  committedLeadTimeDays: number;
-  priceCompetitivenessRatio: number; // Ratio of current price vs benchmark (1.0 = equal, < 1.0 = cheaper/better)
+  supplierPrice: number;
+}
+
+export interface SupplierScoringBenchmark {
+  minPrice: number;
+  minLeadTime: number;
 }
 
 export interface SupplierScoreResult {
@@ -22,58 +26,49 @@ export interface SupplierScoreResult {
 
 export class SupplierScoringService {
   /**
-   * Calculates 4 criteria scores and total weighted score for a supplier (BR-013, UC-009).
+   * Calculates 4 criteria scores and total weighted score for a supplier (BR-012, BR-013).
    */
   public static calculateScores(
     metrics: SupplierPerformanceMetrics,
+    benchmark: SupplierScoringBenchmark,
     weights: WeightDistribution = WeightDistribution.defaultWeights()
   ): SupplierScoreResult {
-    if (metrics.totalDeliveries === 0) {
-      // New supplier with no historical deliveries: assign baseline neutral score of 50.0
-      return {
-        otifScore: 50.0,
-        qualityScore: 50.0,
-        priceScore: 50.0,
-        leadTimeScore: 50.0,
-        totalScore: 50.0,
-        isNewSupplier: true,
-      };
-    }
+    // 1. Tính OTIF Score
+    const otifScore = metrics.totalDeliveries > 0 
+      ? Math.min(100, Math.max(0, (metrics.onTimeInFullCount / metrics.totalDeliveries) * 100))
+      : 50.0; // Baseline cho NCC chưa giao hàng
 
-    // 1. OTIF Score (0 - 100%)
-    const otifScore = Math.min(100, Math.max(0, (metrics.onTimeInFullCount / metrics.totalDeliveries) * 100));
-
-    // 2. Quality Score (0 - 100%)
+    // 2. Tính Quality Score
     let qualityScore = 100;
     if (metrics.totalDeliveredQuantity > 0) {
       const defectRate = (metrics.totalDefectiveQuantity / metrics.totalDeliveredQuantity) * 100;
       qualityScore = Math.min(100, Math.max(0, 100 - defectRate));
+    } else if (metrics.totalDeliveries === 0) {
+      qualityScore = 50.0;
     }
 
-    // 3. Price Score (0 - 100%)
-    // If ratio <= 1.0 -> 100 - (ratio - 0.8) * 100, clamped [0, 100]
-    let priceScore = 100;
-    if (metrics.priceCompetitivenessRatio > 1.0) {
-      priceScore = Math.max(0, 100 - (metrics.priceCompetitivenessRatio - 1.0) * 100);
-    } else if (metrics.priceCompetitivenessRatio < 1.0) {
-      priceScore = Math.min(100, 100 + (1.0 - metrics.priceCompetitivenessRatio) * 50);
-    }
+    // 3. Tính Price Score (BR-012)
+    const priceScore = this.calculatePriceScore(metrics.supplierPrice, benchmark.minPrice);
 
-    // 4. Lead Time Score (0 - 100%)
-    let leadTimeScore = 100;
-    if (metrics.committedLeadTimeDays > 0) {
-      if (metrics.averageLeadTimeDays > metrics.committedLeadTimeDays) {
-        const delayPercent = ((metrics.averageLeadTimeDays - metrics.committedLeadTimeDays) / metrics.committedLeadTimeDays) * 100;
-        leadTimeScore = Math.max(0, 100 - delayPercent);
-      }
-    }
+    // 4. Tính Lead Time Score (BR-012)
+    const leadTimeScore = this.calculateLeadTimeScore(metrics.averageLeadTimeDays, benchmark.minLeadTime);
 
-    // Total Weighted Score (BR-013)
-    const totalScore =
-      weights.weightPrice * priceScore +
-      weights.weightOtif * otifScore +
-      weights.weightQuality * qualityScore +
-      weights.weightLeadTime * leadTimeScore;
+    let totalScore = 0;
+    let isNewSupplier = false;
+
+    if (metrics.totalDeliveries < 3) {
+      // BR-013: Nhà cung cấp mới (< 3 lần giao). Tạm thời tính điểm dựa trên Giá và Thời gian giao hàng
+      isNewSupplier = true;
+      // Chia lại trọng số đều cho 2 yếu tố đã biết (50% - 50%)
+      totalScore = (priceScore * 0.5) + (leadTimeScore * 0.5);
+    } else {
+      // BR-013: Tính tổng điểm với trọng số
+      totalScore =
+        weights.weightPrice * priceScore +
+        weights.weightOtif * otifScore +
+        weights.weightQuality * qualityScore +
+        weights.weightLeadTime * leadTimeScore;
+    }
 
     return {
       otifScore: Math.round(otifScore * 100) / 100,
@@ -81,7 +76,19 @@ export class SupplierScoringService {
       priceScore: Math.round(priceScore * 100) / 100,
       leadTimeScore: Math.round(leadTimeScore * 100) / 100,
       totalScore: Math.round(totalScore * 100) / 100,
-      isNewSupplier: false,
+      isNewSupplier,
     };
+  }
+
+  private static calculatePriceScore(supplierPrice: number, minPrice: number): number {
+    if (supplierPrice <= 0) return 100;
+    if (minPrice <= 0) minPrice = supplierPrice;
+    return Math.min(100, Math.max(0, (minPrice / supplierPrice) * 100));
+  }
+
+  private static calculateLeadTimeScore(supplierLeadTime: number, minLeadTime: number): number {
+    if (supplierLeadTime <= 0) return 100;
+    if (minLeadTime <= 0) minLeadTime = supplierLeadTime;
+    return Math.min(100, Math.max(0, (minLeadTime / supplierLeadTime) * 100));
   }
 }
