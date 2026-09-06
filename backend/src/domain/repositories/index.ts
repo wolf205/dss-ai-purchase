@@ -5,3 +5,5 @@ export * from './IInventoryRepository';
 export * from './ISalesHistoryRepository';
 export * from './ISupplierWeightConfigRepository';
 export * from './IDataImportLogRepository';
+export * from './IPurchaseOrderRepository';
+export * from './IDeliveryHistoryRepository';

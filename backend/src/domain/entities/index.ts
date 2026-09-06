@@ -6,3 +6,5 @@ export * from './Inventory';
 export * from './SalesHistory';
 export * from './SupplierWeightConfig';
 export * from './DataImportLog';
+export * from './PurchaseOrder';
+export * from './DeliveryHistory';
