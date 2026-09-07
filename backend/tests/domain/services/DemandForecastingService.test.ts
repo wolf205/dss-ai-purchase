@@ -1,10 +1,10 @@
 import { DemandForecastingService } from '../../../src/domain/services/DemandForecastingService';
-import { DailySalesHistoryItem, ForecastResponsePayload } from '../../../src/application/dtos/ForecastDTO';
+import { DailySalesRecord, ForecastResultDomain } from '../../../src/domain/types/ForecastTypes';
 
 describe('DemandForecastingService', () => {
   describe('calculateSMA7Fallback', () => {
     it('should calculate SMA-7 correctly for 14 horizon days', () => {
-      const sales: DailySalesHistoryItem[] = [
+      const sales: DailySalesRecord[] = [
         { date: '2026-08-01', quantity: 10 },
         { date: '2026-08-02', quantity: 10 },
         { date: '2026-08-03', quantity: 10 },
@@ -35,7 +35,7 @@ describe('DemandForecastingService', () => {
     });
 
     it('should fallback if WAPE > 40', () => {
-      const aiRes: ForecastResponsePayload = {
+      const aiRes: ForecastResultDomain = {
         sku: 'SKU-1',
         horizonDays: 7,
         forecastedDemand: 100,
@@ -53,7 +53,7 @@ describe('DemandForecastingService', () => {
     });
 
     it('should NOT fallback if WAPE <= 40', () => {
-      const aiRes: ForecastResponsePayload = {
+      const aiRes: ForecastResultDomain = {
         sku: 'SKU-1',
         horizonDays: 7,
         forecastedDemand: 100,

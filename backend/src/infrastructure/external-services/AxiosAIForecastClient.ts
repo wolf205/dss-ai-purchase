@@ -32,22 +32,22 @@ export class AxiosAIForecastClient implements IAIForecastClient {
       
       const data = response.data;
       
-      // Map back to camelCase DTO
+      // Map back to camelCase DTO (hỗ trợ cả camelCase và snake_case từ AI Service)
       return {
         sku: data.sku,
-        horizonDays: data.horizon_days,
-        forecastedDemand: data.forecasted_demand,
-        dailyAvgDemand: data.daily_avg_demand,
-        wape: data.wape,
-        mae: data.mae,
-        algorithmUsed: data.algorithm_used,
-        isFallback: data.is_fallback,
-        points: data.points.map((p: any) => ({
+        horizonDays: data.horizonDays ?? data.horizon_days ?? payload.horizonDays,
+        forecastedDemand: data.forecastedDemand ?? data.forecasted_demand ?? 0,
+        dailyAvgDemand: data.dailyAvgDemand ?? data.daily_avg_demand ?? 0,
+        wape: data.wape ?? null,
+        mae: data.mae ?? null,
+        algorithmUsed: data.algorithmUsed ?? data.algorithm_used,
+        isFallback: data.isFallback ?? data.is_fallback ?? false,
+        points: (data.points || []).map((p: any) => ({
           date: p.date,
-          predicted: p.predicted,
-          lowerBound: p.lower_bound,
-          upperBound: p.upper_bound,
-        }))
+          predicted: p.predicted ?? 0,
+          lowerBound: p.lowerBound ?? p.lower_bound ?? 0,
+          upperBound: p.upperBound ?? p.upper_bound ?? (p.predicted ?? 0),
+        })),
       };
     } catch (error) {
       // Nếu có lỗi Timeout, Network hoặc 5xx, rethrow lại để Service bắt và xử lý Fallback

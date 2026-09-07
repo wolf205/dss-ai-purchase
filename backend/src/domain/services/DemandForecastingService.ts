@@ -1,4 +1,4 @@
-import { ForecastResponsePayload, DailySalesHistoryItem, ForecastPointDTO } from '../../application/dtos/ForecastDTO';
+import { ForecastResultDomain, DailySalesRecord, ForecastPointDomain } from '../types/ForecastTypes';
 
 export class DemandForecastingService {
   /**
@@ -8,8 +8,8 @@ export class DemandForecastingService {
   public static calculateSMA7Fallback(
     sku: string,
     horizonDays: number,
-    salesHistory: DailySalesHistoryItem[]
-  ): ForecastResponsePayload {
+    salesHistory: DailySalesRecord[]
+  ): ForecastResultDomain {
     // 1. Lấy dữ liệu 7 ngày gần nhất (giả định đã được sắp xếp tăng dần theo date)
     const last7Days = salesHistory.slice(-7);
     
@@ -20,7 +20,7 @@ export class DemandForecastingService {
     }
 
     // 2. Tạo kết quả dự báo
-    const points: ForecastPointDTO[] = [];
+    const points: ForecastPointDomain[] = [];
     let forecastedDemand = 0;
 
     for (let i = 1; i <= horizonDays; i++) {
@@ -55,13 +55,13 @@ export class DemandForecastingService {
    * BR-007: Đánh giá mô hình AI. Nếu WAPE > 40% hoặc AI lỗi (null), tự động kích hoạt Fallback.
    */
   public static evaluateAndFallback(
-    aiResponse: ForecastResponsePayload | null,
+    aiResponse: ForecastResultDomain | null,
     sku: string,
     horizonDays: number,
-    salesHistory: DailySalesHistoryItem[]
-  ): ForecastResponsePayload {
-    if (!aiResponse) {
-      // Lỗi kết nối, Timeout
+    salesHistory: DailySalesRecord[]
+  ): ForecastResultDomain {
+    if (!aiResponse || !aiResponse.algorithmUsed) {
+      // Lỗi kết nối, Timeout hoặc response thiếu algorithmUsed
       return this.calculateSMA7Fallback(sku, horizonDays, salesHistory);
     }
 
