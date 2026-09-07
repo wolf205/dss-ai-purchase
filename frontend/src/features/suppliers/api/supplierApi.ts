@@ -143,20 +143,37 @@ export const supplierApi = {
 
   getWeights: async (): Promise<SupplierWeightConfig> => {
     try {
-      const res = await apiClient.get<{ success: boolean; data: SupplierWeightConfig }>('/suppliers/weights');
-      return res.data.data;
+      const res = await apiClient.get<{ success: boolean; data: any }>('/suppliers/weights');
+      const raw = res.data.data;
+      const otif = Number(raw?.weightOtif ?? 35);
+      const quality = Number(raw?.weightQuality ?? 30);
+      const price = Number(raw?.weightPrice ?? 20);
+      const leadTime = Number(raw?.weightLeadTime ?? raw?.weightLeadtime ?? 15);
+
+      const isDecimal = (otif + quality + price + leadTime) <= 1.5;
+      return {
+        weightOtif: isDecimal ? Math.round(otif * 100) : otif,
+        weightQuality: isDecimal ? Math.round(quality * 100) : quality,
+        weightPrice: isDecimal ? Math.round(price * 100) : price,
+        weightLeadTime: isDecimal ? Math.round(leadTime * 100) : leadTime,
+      };
     } catch {
       return {
         weightOtif: 35.0,
         weightQuality: 30.0,
         weightPrice: 20.0,
-        weightLeadtime: 15.0,
+        weightLeadTime: 15.0,
       };
     }
   },
 
   updateWeights: async (weights: SupplierWeightConfig): Promise<void> => {
-    await apiClient.put('/suppliers/weights', weights);
+    await apiClient.put('/suppliers/weights', {
+      weightPrice: Number(weights.weightPrice),
+      weightOtif: Number(weights.weightOtif),
+      weightQuality: Number(weights.weightQuality),
+      weightLeadTime: Number(weights.weightLeadTime),
+    });
   },
 };
 

@@ -31,5 +31,5 @@ export interface SupplierWeightConfig {
   weightOtif: number;
   weightQuality: number;
   weightPrice: number;
-  weightLeadtime: number;
+  weightLeadTime: number;
 }

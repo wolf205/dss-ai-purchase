@@ -11,7 +11,7 @@ export const SupplierWeightsPage: React.FC = () => {
     weightOtif: 35.0,
     weightQuality: 30.0,
     weightPrice: 20.0,
-    weightLeadtime: 15.0,
+    weightLeadTime: 15.0,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,10 +33,10 @@ export const SupplierWeightsPage: React.FC = () => {
   }, []);
 
   const sumWeights =
-    Number(weights.weightOtif) +
-    Number(weights.weightQuality) +
-    Number(weights.weightPrice) +
-    Number(weights.weightLeadtime);
+    Number(weights.weightOtif || 0) +
+    Number(weights.weightQuality || 0) +
+    Number(weights.weightPrice || 0) +
+    Number(weights.weightLeadTime || 0);
 
   const isValidSum = Math.abs(sumWeights - 100.0) < 0.01;
 
@@ -88,7 +88,7 @@ export const SupplierWeightsPage: React.FC = () => {
       color: 'accent-amber-600',
     },
     {
-      key: 'weightLeadtime' as keyof SupplierWeightConfig,
+      key: 'weightLeadTime' as keyof SupplierWeightConfig,
       name: 'Thời Gian Đáp Ứng Giao Hàng (Lead Time)',
       desc: 'Tốc độ giao hàng kể từ khi chốt đơn đặt hàng PO',
       color: 'accent-purple-600',
@@ -177,7 +177,7 @@ export const SupplierWeightsPage: React.FC = () => {
 
         <div className="space-y-6">
           {criteriaList.map((item) => {
-            const currentVal = weights[item.key];
+            const currentVal = Number(weights[item.key] ?? 0);
             return (
               <div key={item.key} className="space-y-2 p-4 rounded-xl border border-slate-100 bg-slate-50/50">
                 <div className="flex items-center justify-between">
