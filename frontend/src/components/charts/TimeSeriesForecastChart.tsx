@@ -18,6 +18,7 @@ export interface TimeSeriesForecastChartProps {
   isFallback?: boolean;
   wape?: number;
   height?: string;
+  showTitle?: boolean;
 }
 
 export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = ({
@@ -29,6 +30,7 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
   isFallback = false,
   wape,
   height = '400px',
+  showTitle,
 }) => {
   const dates = data.map((d) => d.date);
   const actualSeries = data.map((d) => (d.actual !== undefined ? d.actual : null));
@@ -41,16 +43,21 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
     return null;
   });
 
+  const hasCanvasTitle = showTitle ?? Boolean(title);
+
   const option = {
-    title: {
-      text: title || (productName ? `Dự báo nhu cầu: ${productName} (${sku})` : 'Chuỗi thời gian bán hàng & Dự báo AI'),
-      subtext: algorithmName
-        ? `Thuật toán: ${algorithmName} ${isFallback ? '(Chế độ Fallback dự phòng)' : ''} ${wape !== undefined ? `• Sai số WAPE: ${wape.toFixed(1)}%` : ''}`
-        : undefined,
-      left: 'left',
-      textStyle: { fontSize: 14, fontWeight: 'bold', color: '#1e293b' },
-      subtextStyle: { fontSize: 11, color: isFallback ? '#dc2626' : '#64748b' },
-    },
+    ...(hasCanvasTitle && {
+      title: {
+        text: title || (productName ? `Dự báo nhu cầu: ${productName} (${sku})` : 'Chuỗi thời gian bán hàng & Dự báo AI'),
+        subtext: algorithmName
+          ? `Thuật toán: ${algorithmName} ${isFallback ? '(Chế độ Fallback dự phòng)' : ''} ${wape !== undefined ? `• Sai số WAPE: ${wape.toFixed(1)}%` : ''}`
+          : undefined,
+        left: 'left',
+        top: 0,
+        textStyle: { fontSize: 13, fontWeight: 'bold', color: '#1e293b' },
+        subtextStyle: { fontSize: 11, color: isFallback ? '#dc2626' : '#64748b' },
+      },
+    }),
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -71,7 +78,7 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
       left: '3%',
       right: '4%',
       bottom: '10%',
-      top: title ? '16%' : '10%',
+      top: hasCanvasTitle ? (algorithmName ? 72 : 52) : 36,
       containLabel: true,
     },
     xAxis: {
@@ -84,7 +91,7 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
     yAxis: {
       type: 'value',
       name: 'Số lượng (Đơn vị)',
-      nameTextStyle: { color: '#64748b', fontSize: 11 },
+      nameTextStyle: { color: '#64748b', fontSize: 11, padding: [0, 0, 4, 0] },
       splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
       axisLabel: { color: '#64748b', fontSize: 11 },
     },

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Package, TrendingUp, Truck, ShieldAlert, Award, Loader2 } from 'lucide-react';
+import { Package, TrendingUp, Truck, ShieldAlert, Award, Loader2, Cpu } from 'lucide-react';
 import Modal from '../../../components/ui/Modal';
 import Badge from '../../../components/ui/Badge';
 import { Sku360Data } from '../types/inventory.types';
@@ -33,7 +33,8 @@ export const SkuDetail360Modal: React.FC<SkuDetail360ModalProps> = ({ sku, isOpe
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      size="4xl"
+      size="5xl"
+      allowMaximize={true}
       title={
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-brand-50 border border-brand-200 text-brand-600">
@@ -118,19 +119,28 @@ export const SkuDetail360Modal: React.FC<SkuDetail360ModalProps> = ({ sku, isOpe
 
           {/* Section 3: Time Series Forecast Chart (UC-007, FR-014) */}
           <div className="border border-slate-200 rounded-xl p-4 bg-white shadow-xs">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                 <TrendingUp className="w-4 h-4 text-brand-600" />
                 Lịch Sử Tiêu Thụ & Dự Báo AI 14 Ngày Tới (Kèm Dải Tin Cậy 95%)
               </h4>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-semibold">
+                  <Cpu className="w-3 h-3 text-indigo-600" />
+                  Holt-Winters (Dự Báo AI)
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-medium">
+                  Dải tin cậy 95%
+                </span>
+              </div>
             </div>
             {data.forecastPoints ? (
               <TimeSeriesForecastChart
                 data={data.forecastPoints}
                 sku={data.sku}
                 productName={data.name}
-                algorithmName="Holt-Winters Triple Exponential Smoothing"
-                height="320px"
+                showTitle={false}
+                height="340px"
               />
             ) : (
               <div className="py-12 text-center text-xs text-slate-400">Không có dữ liệu dự báo.</div>

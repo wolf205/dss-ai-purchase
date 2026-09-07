@@ -162,6 +162,7 @@ export const ForecastingPage: React.FC = () => {
               algorithmName={selectedItem?.algorithmUsed || 'AI Holt-Winters'}
               isFallback={selectedItem?.isFallback}
               wape={selectedItem?.wape}
+              showTitle={false}
               height="400px"
             />
           )}
