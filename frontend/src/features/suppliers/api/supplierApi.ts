@@ -143,7 +143,7 @@ export const supplierApi = {
 
   getWeights: async (): Promise<SupplierWeightConfig> => {
     try {
-      const res = await apiClient.get<{ success: boolean; data: any }>('/suppliers/weights');
+      const res = await apiClient.get<{ success: boolean; data: any }>('/config/supplier-weights');
       const raw = res.data.data;
       const otif = Number(raw?.weightOtif ?? 35);
       const quality = Number(raw?.weightQuality ?? 30);
@@ -168,7 +168,7 @@ export const supplierApi = {
   },
 
   updateWeights: async (weights: SupplierWeightConfig): Promise<void> => {
-    await apiClient.put('/suppliers/weights', {
+    await apiClient.put('/config/supplier-weights', {
       weightPrice: Number(weights.weightPrice),
       weightOtif: Number(weights.weightOtif),
       weightQuality: Number(weights.weightQuality),

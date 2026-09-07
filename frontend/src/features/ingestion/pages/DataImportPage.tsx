@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { UploadCloud, FileSpreadsheet, CheckCircle2, FileText } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, CheckCircle2, FileText, Download, AlertCircle } from 'lucide-react';
 import ingestionApi from '../api/ingestionApi';
-import { ImportResultData, ImportType } from '../types/ingestion.types';
+import { ImportResultData, ImportType, ImportErrorDetail } from '../types/ingestion.types';
 import Button from '../../../components/ui/Button';
 import Alert from '../../../components/ui/Toast';
 import { cn } from '../../../lib/utils';
@@ -13,6 +13,7 @@ export const DataImportPage: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [result, setResult] = useState<ImportResultData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<ImportErrorDetail[]>([]);
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -20,6 +21,7 @@ export const DataImportPage: React.FC = () => {
       setFile(e.dataTransfer.files[0]);
       setResult(null);
       setErrorMsg(null);
+      setErrorDetails([]);
     }
   };
 
@@ -28,6 +30,7 @@ export const DataImportPage: React.FC = () => {
       setFile(e.target.files[0]);
       setResult(null);
       setErrorMsg(null);
+      setErrorDetails([]);
     }
   };
 
@@ -39,14 +42,20 @@ export const DataImportPage: React.FC = () => {
 
     setIsUploading(true);
     setErrorMsg(null);
+    setErrorDetails([]);
     setResult(null);
 
     try {
       const res = await ingestionApi.uploadFile(file, importType, overwrite);
       setResult(res);
       setFile(null);
+      setErrorMsg(null);
+      setErrorDetails([]);
     } catch (err: any) {
-      setErrorMsg(err.response?.data?.error?.message || 'Không thể nạp tệp dữ liệu. Vui lòng kiểm tra định dạng tệp.');
+      const backendError = err.response?.data?.error;
+      setErrorMsg(backendError?.message || 'Không thể nạp tệp dữ liệu. Vui lòng kiểm tra định dạng tệp.');
+      setErrorDetails(backendError?.details || []);
+      setResult(null);
     } finally {
       setIsUploading(false);
     }
@@ -191,6 +200,34 @@ export const DataImportPage: React.FC = () => {
                 <li>Không chứa các dòng trống hoặc sai định dạng số.</li>
               </ul>
             </div>
+            {/* Template download buttons */}
+            <div className="pt-3 border-t border-slate-800 space-y-2">
+              <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                Tải Tệp Tin Mẫu (Templates):
+              </div>
+              <button
+                type="button"
+                onClick={() => ingestionApi.downloadTemplate('SALES_HISTORY')}
+                className="w-full text-left px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-brand-300 font-medium flex items-center justify-between transition-colors cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-brand-400" />
+                  Mẫu Lịch Sử Bán Hàng (.csv)
+                </span>
+                <Download className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => ingestionApi.downloadTemplate('INVENTORY_SNAPSHOT')}
+                className="w-full text-left px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-emerald-300 font-medium flex items-center justify-between transition-colors cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                  Mẫu Kiểm Kê Tồn Kho (.csv)
+                </span>
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Result Card */}
@@ -212,6 +249,45 @@ export const DataImportPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Error Details Table (UC-003 E2) */}
+      {errorDetails.length > 0 && (
+        <div className="bg-white rounded-2xl border border-rose-200 shadow-sm p-5 space-y-3 animate-scale-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-rose-700 font-bold text-sm">
+              <AlertCircle className="w-5 h-5 text-rose-600" />
+              <span>Chi Tiết Lỗi Dữ Liệu ({errorDetails.length} dòng vi phạm quy tắc)</span>
+            </div>
+            <span className="text-xs text-slate-400 font-mono">Quy tắc giao dịch All-or-Nothing</span>
+          </div>
+
+          <div className="max-h-80 overflow-y-auto border border-slate-200 rounded-xl">
+            <table className="min-w-full divide-y divide-slate-200 text-xs">
+              <thead className="bg-rose-50 text-rose-900 font-bold sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 text-center w-16">Dòng</th>
+                  <th className="px-3 py-2 text-left w-36">Cột / Trường</th>
+                  <th className="px-3 py-2 text-left w-40">Giá Trị Nhập</th>
+                  <th className="px-3 py-2 text-left">Nguyên Nhân Vi Phạm</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                {errorDetails.map((err, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50">
+                    <td className="px-3 py-2 text-center font-bold font-mono text-rose-600">{err.row}</td>
+                    <td className="px-3 py-2 font-mono text-slate-800 font-bold">{err.field}</td>
+                    <td className="px-3 py-2 font-mono text-slate-500 max-w-xs truncate">{String(err.value ?? '-')}</td>
+                    <td className="px-3 py-2 text-rose-700 font-medium">{err.issue}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[11px] text-slate-500 italic">
+            * Toàn bộ tệp tin đã bị từ chối để đảm bảo tính toàn vẹn CSDL (BR-010). Vui lòng chỉnh sửa các dòng trên theo hướng dẫn rồi tiến hành nạp lại.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

@@ -12,30 +12,45 @@ export const ingestionApi = {
     formData.append('type', type);
     formData.append('overwriteDuplicateDates', String(overwriteDuplicateDates));
 
-    try {
-      const res = await apiClient.post<{ success: boolean; data: ImportResultData }>(
-        type === 'SALES_HISTORY' ? '/imports/sales' : '/imports/inventory',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-      return res.data.data;
-    } catch {
-      // Fallback response for demonstration if backend storage is offline
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      return {
-        batchId: `batch-${Date.now()}`,
-        fileName: file.name,
-        importType: type,
-        totalRows: 250,
-        successfulRows: 250,
-        failedRows: 0,
-        status: 'SUCCESS',
-      };
+    const res = await apiClient.post<{ success: boolean; data: ImportResultData }>(
+      '/data-import/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return res.data.data;
+  },
+
+  downloadTemplate: (type: ImportType) => {
+    let csvContent = '';
+    let filename = '';
+
+    if (type === 'SALES_HISTORY') {
+      csvContent = 'SKU,Date,QuantitySold,UnitPrice\n' +
+        'MILK-VNM-180,2026-09-01,24,6200\n' +
+        'BEER-TIGER-330,2026-09-01,48,16000\n' +
+        'NOODLE-HAOHAO-75,2026-09-01,60,4500\n';
+      filename = 'Template_LichSuBanHang.csv';
+    } else {
+      csvContent = 'SKU,OnHand\n' +
+        'MILK-VNM-180,120\n' +
+        'BEER-TIGER-330,85\n' +
+        'NOODLE-HAOHAO-75,200\n';
+      filename = 'Template_KiemKeTonKho.csv';
     }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   },
 };
 

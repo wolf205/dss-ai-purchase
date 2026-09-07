@@ -4,6 +4,7 @@ export interface ImportErrorDetail {
   row: number;
   field: string;
   issue: string;
+  value?: any;
 }
 
 export interface ImportResultData {
