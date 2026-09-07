@@ -16,7 +16,7 @@ export interface TimeSeriesForecastChartProps {
   productName?: string;
   algorithmName?: string;
   isFallback?: boolean;
-  wape?: number;
+  wape?: number | null;
   height?: string;
   showTitle?: boolean;
 }
@@ -50,7 +50,7 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
       title: {
         text: title || (productName ? `Dự báo nhu cầu: ${productName} (${sku})` : 'Chuỗi thời gian bán hàng & Dự báo AI'),
         subtext: algorithmName
-          ? `Thuật toán: ${algorithmName} ${isFallback ? '(Chế độ Fallback dự phòng)' : ''} ${wape !== undefined ? `• Sai số WAPE: ${wape.toFixed(1)}%` : ''}`
+          ? `Thuật toán: ${algorithmName} ${isFallback ? '(Chế độ Fallback dự phòng)' : ''} ${wape != null ? `• Sai số WAPE: ${wape.toFixed(1)}%` : ''}`
           : undefined,
         left: 'left',
         top: 0,

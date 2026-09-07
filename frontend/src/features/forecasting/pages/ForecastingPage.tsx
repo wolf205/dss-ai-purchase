@@ -11,7 +11,7 @@ import { cn } from '../../../lib/utils';
 export const ForecastingPage: React.FC = () => {
   const [horizon, setHorizon] = useState<number>(14);
   const [forecasts, setForecasts] = useState<ForecastSummaryItem[]>([]);
-  const [selectedSku, setSelectedSku] = useState<string>('MILK-VNM-180');
+  const [selectedSku, setSelectedSku] = useState<string>('');
   const [points, setPoints] = useState<ForecastPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
@@ -22,8 +22,11 @@ export const ForecastingPage: React.FC = () => {
     try {
       const data = await forecastApi.getForecasts({ horizon });
       setForecasts(data);
-      if (data.length > 0 && !selectedSku) {
-        setSelectedSku(data[0].sku);
+      if (data && data.length > 0) {
+        setSelectedSku((prev) => (data.some((f) => f.sku === prev) ? prev : data[0].sku));
+      } else {
+        setSelectedSku('');
+        setPoints([]);
       }
     } finally {
       setLoading(false);
@@ -31,6 +34,10 @@ export const ForecastingPage: React.FC = () => {
   };
 
   const fetchChartPoints = async (sku: string, h: number) => {
+    if (!sku) {
+      setPoints([]);
+      return;
+    }
     setChartLoading(true);
     try {
       const pts = await forecastApi.getSkuForecastPoints(sku, h);
@@ -47,6 +54,8 @@ export const ForecastingPage: React.FC = () => {
   useEffect(() => {
     if (selectedSku) {
       fetchChartPoints(selectedSku, horizon);
+    } else {
+      setPoints([]);
     }
   }, [selectedSku, horizon]);
 
@@ -110,64 +119,74 @@ export const ForecastingPage: React.FC = () => {
       </div>
 
       {/* Main Forecast Chart with Confidence Band */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
-          <div>
-            <div className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>{selectedItem?.name || selectedSku}</span>
-              <span className="text-xs font-mono text-slate-400">({selectedSku})</span>
-              {selectedItem?.isFallback ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold">
-                  <AlertTriangle className="w-3 h-3" /> Fallback SMA-7 (BR-007)
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold">
-                  <Cpu className="w-3 h-3 text-indigo-600" /> Mô Hình AI Holt-Winters
-                </span>
-              )}
+      {selectedSku ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+            <div>
+              <div className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <span>{selectedItem?.name || selectedSku}</span>
+                <span className="text-xs font-mono text-slate-400">({selectedSku})</span>
+                {selectedItem?.isFallback ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold">
+                    <AlertTriangle className="w-3 h-3" /> Fallback SMA-7 (BR-007)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold">
+                    <Cpu className="w-3 h-3 text-indigo-600" /> Mô Hình AI Holt-Winters
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Biểu đồ trực quan hóa dữ liệu bán thực tế quá khứ và dải tin cậy 95% trong {horizon} ngày tới (FR-014)
+              </p>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Biểu đồ trực quan hóa dữ liệu bán thực tế quá khứ và dải tin cậy 95% trong {horizon} ngày tới (FR-014)
-            </p>
+
+            {selectedItem && (
+              <div className="flex items-center gap-4 text-right">
+                <div>
+                  <div className="text-xs text-slate-400 font-medium">Tổng Cầu Dự Báo</div>
+                  <div className="text-xl font-black text-brand-600">
+                    {selectedItem.forecastedDemand} <span className="text-xs font-normal text-slate-500">đơn vị</span>
+                  </div>
+                </div>
+                <div className="border-l border-slate-200 pl-4">
+                  <div className="text-xs text-slate-400 font-medium">Sai Số WAPE</div>
+                  <div className={cn('text-xl font-black', selectedItem.wape != null && selectedItem.wape > 40 ? 'text-rose-600' : 'text-emerald-600')}>
+                    {selectedItem.wape != null ? `${selectedItem.wape.toFixed(1)}%` : 'N/A'}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {selectedItem && (
-            <div className="flex items-center gap-4 text-right">
-              <div>
-                <div className="text-xs text-slate-400 font-medium">Tổng Cầu Dự Báo</div>
-                <div className="text-xl font-black text-brand-600">
-                  {selectedItem.forecastedDemand} <span className="text-xs font-normal text-slate-500">đơn vị</span>
-                </div>
+          <div className="pt-2">
+            {chartLoading ? (
+              <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 text-xs">
+                Đang tính toán biểu đồ dự báo...
               </div>
-              <div className="border-l border-slate-200 pl-4">
-                <div className="text-xs text-slate-400 font-medium">Sai Số WAPE</div>
-                <div className={cn('text-xl font-black', selectedItem.wape > 40 ? 'text-rose-600' : 'text-emerald-600')}>
-                  {selectedItem.wape.toFixed(1)}%
-                </div>
-              </div>
-            </div>
-          )}
+            ) : (
+              <TimeSeriesForecastChart
+                data={points}
+                sku={selectedSku}
+                productName={selectedItem?.name}
+                algorithmName={selectedItem?.algorithmUsed || 'AI Holt-Winters'}
+                isFallback={selectedItem?.isFallback}
+                wape={selectedItem?.wape}
+                showTitle={false}
+                height="400px"
+              />
+            )}
+          </div>
         </div>
-
-        <div className="pt-2">
-          {chartLoading ? (
-            <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 text-xs">
-              Đang tính toán biểu đồ dự báo...
-            </div>
-          ) : (
-            <TimeSeriesForecastChart
-              data={points}
-              sku={selectedSku}
-              productName={selectedItem?.name}
-              algorithmName={selectedItem?.algorithmUsed || 'AI Holt-Winters'}
-              isFallback={selectedItem?.isFallback}
-              wape={selectedItem?.wape}
-              showTitle={false}
-              height="400px"
-            />
-          )}
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm flex flex-col items-center justify-center text-center">
+          <Sparkles className="w-10 h-10 text-slate-300 mb-3" />
+          <h4 className="text-base font-bold text-slate-800">Chưa Có Dữ Liệu Dự Báo Nhu Cầu</h4>
+          <p className="text-xs text-slate-500 max-w-md mt-1">
+            Hệ thống chưa có bản ghi dự báo nào. Hãy nhập dữ liệu bán hàng & tồn kho tại mục <strong>Nhập Dữ Liệu</strong> hoặc nhấn <strong>Làm Mới</strong> sau khi chạy phân tích DSS.
+          </p>
         </div>
-      </div>
+      )}
 
       {/* Summary Table across SKUs */}
       <div className="space-y-3">
@@ -201,21 +220,25 @@ export const ForecastingPage: React.FC = () => {
                   {item.forecastedDemand}
                 </TableCell>
                 <TableCell className="text-right text-slate-600">
-                  {item.dailyAvgDemand.toFixed(1)} / ngày
+                  {item.dailyAvgDemand != null ? item.dailyAvgDemand.toFixed(1) : '0.0'} / ngày
                 </TableCell>
                 <TableCell className="text-right">
-                  <span
-                    className={cn(
-                      'font-bold text-xs px-2 py-0.5 rounded-full',
-                      item.wape > 40
-                        ? 'bg-red-100 text-red-700'
-                        : item.wape > 20
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-emerald-100 text-emerald-700'
-                    )}
-                  >
-                    {item.wape.toFixed(1)}%
-                  </span>
+                  {item.wape != null ? (
+                    <span
+                      className={cn(
+                        'font-bold text-xs px-2 py-0.5 rounded-full',
+                        item.wape > 40
+                          ? 'bg-red-100 text-red-700'
+                          : item.wape > 20
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-emerald-100 text-emerald-700'
+                      )}
+                    >
+                      {item.wape.toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400 font-medium italic">N/A</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-center">
                   {item.isFallback ? (

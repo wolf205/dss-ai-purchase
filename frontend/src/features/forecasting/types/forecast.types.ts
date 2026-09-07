@@ -5,8 +5,8 @@ export interface ForecastSummaryItem {
   horizonDays: number;
   forecastedDemand: number;
   dailyAvgDemand: number;
-  wape: number;
-  mae: number;
+  wape: number | null;
+  mae: number | null;
   algorithmUsed: string;
   isFallback: boolean;
 }
