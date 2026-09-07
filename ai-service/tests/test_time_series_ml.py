@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
 import pytest
-from app.services.time_series_ml import TimeSeriesForecaster
+from app.strategies.holt_winters import HoltWintersStrategy
+from app.models.schemas import AlgorithmUsedEnum
 
-class TestTimeSeriesForecaster:
-    """Kiểm tra mô hình Holt-Winters, tính toán WAPE/MAE và cơ chế Fallback BR-007."""
+
+class TestHoltWintersStrategy:
+    """Kiểm tra mô hình Holt-Winters, tính toán WAPE/MAE và cơ chế Fallback BR-007 qua HoltWintersStrategy."""
 
     def test_holt_winters_seasonal_series_success(self):
         """
@@ -17,15 +19,17 @@ class TestTimeSeriesForecaster:
         sales_data = weekly_pattern * 5
         series = pd.Series(sales_data)
 
-        preds, wape, mae, is_fallback = TimeSeriesForecaster.predict(series, horizon_days=14)
+        strategy = HoltWintersStrategy()
+        result = strategy.predict(series, horizon_days=14)
 
-        assert len(preds) == 14
-        assert np.all(preds >= 0.0)
-        assert wape is not None
-        assert wape <= 40.0, f"Kỳ vọng WAPE <= 40%, thực tế: {wape}%"
-        assert is_fallback is False
-        assert mae is not None
-        assert mae >= 0.0
+        assert len(result.predictions) == 14
+        assert np.all(result.predictions >= 0.0)
+        assert result.wape is not None
+        assert result.wape <= 40.0, f"Kỳ vọng WAPE <= 40%, thực tế: {result.wape}%"
+        assert result.is_fallback is False
+        assert result.algorithm_used == AlgorithmUsedEnum.AI_MODEL
+        assert result.mae is not None
+        assert result.mae >= 0.0
 
     def test_holt_winters_volatile_fallback_triggered(self):
         """
@@ -38,26 +42,30 @@ class TestTimeSeriesForecaster:
         spike_week = [150, 200, 180, 250, 220, 300, 280]
         series = pd.Series(base_history + spike_week)
 
-        preds, wape, mae, is_fallback = TimeSeriesForecaster.predict(series, horizon_days=14)
+        strategy = HoltWintersStrategy()
+        result = strategy.predict(series, horizon_days=14)
 
-        assert len(preds) == 14
-        assert np.all(preds >= 0.0)
-        assert wape is not None
-        assert wape > 40.0, f"Kỳ vọng WAPE > 40%, thực tế: {wape}%"
-        # Bắt buộc cờ is_fallback = True theo quy tắc BR-007
-        assert is_fallback is True
+        assert len(result.predictions) == 14
+        assert np.all(result.predictions >= 0.0)
+        assert result.wape is not None
+        assert result.wape > 40.0, f"Kỳ vọng WAPE > 40%, thực tế: {result.wape}%"
+        # Bắt buộc cờ is_fallback = True và thuật toán FALLBACK_SMA7 theo BR-007
+        assert result.is_fallback is True
+        assert result.algorithm_used == AlgorithmUsedEnum.FALLBACK_SMA7
         # Giá trị dự báo fallback là SMA-7 của 7 ngày cuối (~225.7)
-        assert np.allclose(preds, float(np.mean(spike_week)))
+        assert np.allclose(result.predictions, float(np.mean(spike_week)))
 
     def test_holt_winters_short_history_fallback(self):
         """Chuỗi dưới 14 ngày không đủ điều kiện chạy Holt-Winters -> Fallback ngay."""
         series = pd.Series([10, 12, 8, 14, 15, 9, 11, 13, 10, 12])  # 10 ngày
-        preds, wape, mae, is_fallback = TimeSeriesForecaster.predict(series, horizon_days=7)
+        strategy = HoltWintersStrategy()
+        result = strategy.predict(series, horizon_days=7)
 
-        assert len(preds) == 7
-        assert np.all(preds >= 0.0)
-        assert is_fallback is True
-        assert wape is None
+        assert len(result.predictions) == 7
+        assert np.all(result.predictions >= 0.0)
+        assert result.is_fallback is True
+        assert result.algorithm_used == AlgorithmUsedEnum.FALLBACK_SMA7
+        assert result.wape is None
 
     def test_holt_winters_predictions_never_negative(self):
         """Dự báo từ chuỗi giảm dần về 0 không bao giờ tạo ra lượng bán âm."""
@@ -65,5 +73,6 @@ class TestTimeSeriesForecaster:
         data = [20 - (i % 20) for i in range(35)]
         series = pd.Series(data)
 
-        preds, _, _, _ = TimeSeriesForecaster.predict(series, horizon_days=14)
-        assert np.all(preds >= 0.0)
+        strategy = HoltWintersStrategy()
+        result = strategy.predict(series, horizon_days=14)
+        assert np.all(result.predictions >= 0.0)
