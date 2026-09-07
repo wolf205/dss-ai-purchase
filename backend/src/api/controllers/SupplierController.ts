@@ -3,6 +3,7 @@ import { ManageSupplierUseCase } from '../../application/use-cases/supplier/Mana
 import { UpdateSupplierWeightsUseCase } from '../../application/use-cases/supplier/UpdateSupplierWeightsUseCase';
 import { GetSupplierWeightsUseCase } from '../../application/use-cases/supplier/GetSupplierWeightsUseCase';
 import { GetSupplierEvaluationsUseCase } from '../../application/use-cases/supplier/GetSupplierEvaluationsUseCase';
+import { buildPaginationMeta } from '../utils/pagination';
 
 export class SupplierController {
   constructor(
@@ -39,12 +40,7 @@ export class SupplierController {
     res.status(200).json({
       success: true,
       data: result.suppliers,
-      meta: {
-        total: result.total,
-        page,
-        limit,
-        totalPages: Math.ceil(result.total / limit),
-      },
+      meta: buildPaginationMeta(page, limit, result.total),
       timestamp: new Date().toISOString(),
     });
   };
@@ -89,7 +85,11 @@ export class SupplierController {
   };
 
   public setProductSupplierTerms = async (req: Request, res: Response): Promise<void> => {
-    const terms = await this.manageSupplierUseCase.setProductSupplierTerms(req.body);
+    const supplierId = req.params.id || req.body.supplierId;
+    const terms = await this.manageSupplierUseCase.setProductSupplierTerms({
+      ...req.body,
+      supplierId,
+    });
     res.status(200).json({
       success: true,
       data: terms,

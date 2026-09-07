@@ -25,8 +25,14 @@ router.put(
   catchAsync(supplierController.updateEvaluationWeights)
 );
 
-// Supplier product terms routes (UC-002)
+// Supplier product terms routes (UC-002, Docs 3.2)
 router.get('/product/:sku', catchAsync(supplierController.getSuppliersByProductSku));
+router.post(
+  '/:id/products',
+  rbacMiddleware(['ADMIN']),
+  validateBody(productSupplierTermsSchema),
+  catchAsync(supplierController.setProductSupplierTerms)
+);
 router.post(
   '/terms',
   rbacMiddleware(['ADMIN']),

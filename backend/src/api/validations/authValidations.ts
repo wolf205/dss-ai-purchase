@@ -24,3 +24,13 @@ export const updateUserSchema = z.object({
   isActive: z.boolean().optional(),
   password: z.string().min(6, 'Mật khẩu mới phải có ít nhất 6 ký tự').optional(),
 });
+
+export const changePasswordSchema = z.object({
+  oldPassword: z.string({ required_error: 'Mật khẩu hiện tại không được để trống' }).min(1),
+  newPassword: z.string({ required_error: 'Mật khẩu mới không được để trống' }).min(6, 'Mật khẩu mới phải có ít nhất 6 ký tự'),
+});
+
+export const updateUserStatusSchema = z.object({
+  isActive: z.boolean({ required_error: 'Trạng thái kích hoạt (isActive) không được để trống' }),
+});
+

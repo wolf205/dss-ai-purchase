@@ -40,7 +40,7 @@ export const supplierFilterSchema = z.object({
 
 export const productSupplierTermsSchema = z.object({
   productSku: z.string({ required_error: 'Mã SKU không được để trống' }).min(1),
-  supplierId: z.string({ required_error: 'Mã nhà cung cấp ID không được để trống' }).min(1),
+  supplierId: z.string().optional(),
   purchasePrice: z.number({ required_error: 'Giá nhập không được để trống' }).min(0, 'Giá nhập không được âm'),
   moq: z.number().int().min(1, 'MOQ phải >= 1').default(1),
   packSize: z.number().int().min(1, 'Quy cách đóng gói phải >= 1').default(1),
@@ -48,9 +48,22 @@ export const productSupplierTermsSchema = z.object({
   isPreferred: z.boolean().default(false),
 });
 
-export const updateSupplierWeightsSchema = z.object({
-  weightPrice: z.number({ required_error: 'Trọng số Giá cả không được để trống' }).min(0, 'Trọng số không được âm'),
-  weightOtif: z.number({ required_error: 'Trọng số OTIF không được để trống' }).min(0, 'Trọng số không được âm'),
-  weightQuality: z.number({ required_error: 'Trọng số Chất lượng không được để trống' }).min(0, 'Trọng số không được âm'),
-  weightLeadTime: z.number({ required_error: 'Trọng số Lead Time không được để trống' }).min(0, 'Trọng số không được âm'),
-});
+export const updateSupplierWeightsSchema = z
+  .object({
+    weightPrice: z.number({ required_error: 'Trọng số Giá cả không được để trống' }).min(0, 'Trọng số không được âm'),
+    weightOtif: z.number({ required_error: 'Trọng số OTIF không được để trống' }).min(0, 'Trọng số không được âm'),
+    weightQuality: z.number({ required_error: 'Trọng số Chất lượng không được để trống' }).min(0, 'Trọng số không được âm'),
+    weightLeadTime: z.number().min(0, 'Trọng số không được âm').optional(),
+    weightLeadtime: z.number().min(0, 'Trọng số không được âm').optional(),
+  })
+  .refine(
+    (data) => data.weightLeadTime !== undefined || data.weightLeadtime !== undefined,
+    { message: 'Trọng số Lead Time không được để trống', path: ['weightLeadTime'] }
+  )
+  .transform((data) => ({
+    weightPrice: data.weightPrice,
+    weightOtif: data.weightOtif,
+    weightQuality: data.weightQuality,
+    weightLeadTime: data.weightLeadTime ?? data.weightLeadtime ?? 0,
+  }));
+

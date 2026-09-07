@@ -3,6 +3,8 @@ import { ImportStatus, ImportType } from '../../domain/entities/DataImportLog';
 
 export interface ImportDataResponseDTO {
   importLogId: string;
+  batchId?: string; // Contract alias matching docs/06-api-design & frontend
+  importType?: ImportType;
   fileName: string;
   status: ImportStatus;
   totalRows: number;

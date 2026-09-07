@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { ImportSalesInventoryUseCase } from '../../application/use-cases/ingestion/ImportSalesInventoryUseCase';
-import { PrismaDataImportLogRepository } from '../../infrastructure/repositories/PrismaDataImportLogRepository';
+import { GetDataImportLogsUseCase } from '../../application/use-cases/ingestion/GetDataImportLogsUseCase';
+import { buildPaginationMeta } from '../utils/pagination';
 
 export class DataImportController {
   constructor(
     private readonly importSalesInventoryUseCase: ImportSalesInventoryUseCase,
-    private readonly dataImportLogRepository: PrismaDataImportLogRepository
+    private readonly getDataImportLogsUseCase: GetDataImportLogsUseCase
   ) {}
 
   public uploadSalesAndInventory = async (req: Request, res: Response): Promise<void> => {
@@ -22,15 +23,38 @@ export class DataImportController {
     }
 
     const uploadedBy = req.user?.userId || '00000000-0000-0000-0000-000000000000';
+    const type = (req.body.type || req.body.importType) as 'SALES_HISTORY' | 'INVENTORY_SNAPSHOT' | undefined;
+    const overwriteDuplicateDates = req.body.overwriteDuplicateDates === 'false' || req.body.overwriteDuplicateDates === false ? false : true;
+
     const result = await this.importSalesInventoryUseCase.execute(
       req.file.buffer,
       req.file.originalname,
-      uploadedBy
+      uploadedBy,
+      type,
+      overwriteDuplicateDates
     );
 
-    const statusCode = result.status === 'SUCCESS' ? 200 : 400;
-    res.status(statusCode).json({
-      success: result.status === 'SUCCESS',
+    if (result.status === 'SUCCESS') {
+      res.status(200).json({
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: `Tệp tin chứa ${result.failedRows} dòng dữ liệu bị lỗi. Vui lòng sửa lại theo danh sách đính kèm (BR-010).`,
+        details: result.errors.map((e) => ({
+          row: e.rowNumber,
+          field: e.field,
+          issue: e.message,
+          value: e.value,
+        })),
+      },
       data: result,
       timestamp: new Date().toISOString(),
     });
@@ -38,16 +62,16 @@ export class DataImportController {
 
   public getImportLogs = async (req: Request, res: Response): Promise<void> => {
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
-    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : (page - 1) * limit;
 
-    const result = await this.dataImportLogRepository.findAll({ limit, offset });
+    const result = await this.getDataImportLogsUseCase.getLogs({ limit, offset });
 
     res.status(200).json({
       success: true,
       data: result.logs,
       meta: {
-        total: result.total,
-        limit,
+        ...buildPaginationMeta(page, limit, result.total),
         offset,
       },
       timestamp: new Date().toISOString(),
@@ -55,18 +79,7 @@ export class DataImportController {
   };
 
   public getImportLogById = async (req: Request, res: Response): Promise<void> => {
-    const log = await this.dataImportLogRepository.findById(req.params.id);
-    if (!log) {
-      res.status(404).json({
-        success: false,
-        error: {
-          code: 'IMPORT_LOG_NOT_FOUND',
-          message: 'Không tìm thấy nhật ký nạp dữ liệu',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    const log = await this.getDataImportLogsUseCase.getLogById(req.params.id);
 
     res.status(200).json({
       success: true,
@@ -75,3 +88,4 @@ export class DataImportController {
     });
   };
 }
+

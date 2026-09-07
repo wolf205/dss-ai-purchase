@@ -31,14 +31,18 @@ describe('ImportSalesInventoryUseCase (UC-003, BR-009, BR-010, BR-018)', () => {
       findByProductSku: jest.fn(),
       saveBatch: jest.fn(),
       getDailyAggregates: jest.fn(),
+      getAll30DaysSalesStats: jest.fn(),
     };
     mockInvRepo = {
       findByProductSku: jest.fn(),
       findAll: jest.fn(),
+      findAllWithProducts: jest.fn(),
+      getKpiSummary: jest.fn(),
       save: jest.fn(),
       update: jest.fn(),
       updateOnHand: jest.fn(),
       updateOnOrder: jest.fn(),
+      batchUpdateDss: jest.fn(),
     };
     mockLogRepo = {
       findById: jest.fn(),

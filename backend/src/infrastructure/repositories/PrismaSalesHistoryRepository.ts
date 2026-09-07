@@ -1,6 +1,9 @@
 import { getPrismaClient } from '../database/prisma';
 import { SalesHistory } from '../../domain/entities/SalesHistory';
-import { ISalesHistoryRepository } from '../../domain/repositories/ISalesHistoryRepository';
+import {
+  ISalesHistoryRepository,
+  Product30DaysSalesStat,
+} from '../../domain/repositories/ISalesHistoryRepository';
 
 export class PrismaSalesHistoryRepository implements ISalesHistoryRepository {
   public async findByProductSku(
@@ -25,7 +28,7 @@ export class PrismaSalesHistoryRepository implements ISalesHistoryRepository {
     return records.map((r) => this.toDomain(r));
   }
 
-  public async saveBatch(records: SalesHistory[]): Promise<number> {
+  public async saveBatch(records: SalesHistory[], overwriteDuplicateDates: boolean = true): Promise<number> {
     if (records.length === 0) return 0;
 
     const data = records.map((r) => ({
@@ -38,6 +41,28 @@ export class PrismaSalesHistoryRepository implements ISalesHistoryRepository {
     }));
 
     const prisma = getPrismaClient();
+
+    if (overwriteDuplicateDates) {
+      for (const item of data) {
+        await prisma.salesHistory.upsert({
+          where: {
+            productSku_saleDate: {
+              productSku: item.productSku,
+              saleDate: item.saleDate,
+            },
+          },
+          create: item,
+          update: {
+            quantitySold: item.quantitySold,
+            revenue: item.revenue,
+            source: item.source,
+            importBatchId: item.importBatchId,
+          },
+        });
+      }
+      return data.length;
+    }
+
     const result = await prisma.salesHistory.createMany({
       data,
       skipDuplicates: true,
@@ -67,6 +92,70 @@ export class PrismaSalesHistoryRepository implements ISalesHistoryRepository {
       date: r.saleDate,
       quantity: r.quantitySold,
     }));
+  }
+
+  public async getAll30DaysSalesStats(): Promise<Product30DaysSalesStat[]> {
+    const prisma = getPrismaClient();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    startDate.setHours(0, 0, 0, 0);
+
+    const activeProducts = await prisma.product.findMany({
+      where: { isActive: true },
+      select: { sku: true },
+    });
+
+    const sales = await prisma.salesHistory.findMany({
+      where: {
+        saleDate: { gte: startDate },
+        product: { isActive: true },
+      },
+      select: {
+        productSku: true,
+        saleDate: true,
+        quantitySold: true,
+        revenue: true,
+      },
+      orderBy: { saleDate: 'asc' },
+    });
+
+    const salesBySku = new Map<string, Array<{ quantity: number; revenue: number }>>();
+    for (const s of sales) {
+      const list = salesBySku.get(s.productSku) || [];
+      list.push({ quantity: s.quantitySold, revenue: Number(s.revenue) });
+      salesBySku.set(s.productSku, list);
+    }
+
+    const results: Product30DaysSalesStat[] = [];
+
+    for (const prod of activeProducts) {
+      const records = salesBySku.get(prod.sku) || [];
+      const historyDaysCount = records.length;
+      const totalRevenue = records.reduce((sum, r) => sum + r.revenue, 0);
+      const totalQuantity = records.reduce((sum, r) => sum + r.quantity, 0);
+
+      // Mean daily quantity over 30 days window
+      const meanDailyQuantity = historyDaysCount > 0 ? totalQuantity / 30 : 0;
+
+      // Sample std deviation
+      let stdDevDailyQuantity = 0;
+      if (historyDaysCount > 1) {
+        const meanSample = totalQuantity / historyDaysCount;
+        const variance =
+          records.reduce((sum, r) => sum + Math.pow(r.quantity - meanSample, 2), 0) / (historyDaysCount - 1);
+        stdDevDailyQuantity = Math.sqrt(variance);
+      }
+
+      results.push({
+        productSku: prod.sku,
+        totalRevenue,
+        meanDailyQuantity,
+        stdDevDailyQuantity,
+        historyDaysCount,
+      });
+    }
+
+    return results;
   }
 
   private toDomain(record: any): SalesHistory {

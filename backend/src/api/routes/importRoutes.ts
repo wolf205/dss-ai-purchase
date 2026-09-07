@@ -8,6 +8,13 @@ const router = Router();
 
 router.use(authMiddleware);
 
+// POST /upload (Docs 2.4) & legacy /sales-inventory
+router.post(
+  '/upload',
+  uploadMiddleware.single('file'),
+  catchAsync(dataImportController.uploadSalesAndInventory)
+);
+
 router.post(
   '/sales-inventory',
   uploadMiddleware.single('file'),

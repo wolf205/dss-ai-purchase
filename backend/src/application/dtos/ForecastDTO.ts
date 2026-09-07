@@ -28,3 +28,31 @@ export interface ForecastResponsePayload {
   isFallback: boolean;
   points: ForecastPointDTO[];
 }
+
+export interface ColdStartInputDTO {
+  sku: string;
+  expectedDailySales: number;
+  notes?: string;
+  updatedBy?: string;
+}
+
+export interface ColdStartResponseDTO {
+  sku: string;
+  expectedDailySales: number;
+  calculatedSafetyStock: number;
+  message: string;
+}
+
+export interface ForecastSummaryItemDTO {
+  sku: string;
+  name: string;
+  category: string;
+  horizonDays: number;
+  forecastedDemand: number;
+  dailyAvgDemand: number;
+  wape: number | null;
+  mae: number | null;
+  algorithmUsed: string;
+  isFallback: boolean;
+}
+

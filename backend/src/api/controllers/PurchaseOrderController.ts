@@ -6,6 +6,8 @@ import { ConfirmPurchaseOrderUseCase } from '../../application/use-cases/purchas
 import { CancelPurchaseOrderUseCase } from '../../application/use-cases/purchase-orders/CancelPurchaseOrderUseCase';
 import { ReceiveGoodsUseCase } from '../../application/use-cases/purchase-orders/ReceiveGoodsUseCase';
 
+import { buildPaginationMeta } from '../utils/pagination';
+
 export class PurchaseOrderController {
   constructor(
     private readonly createPurchaseOrderUseCase: CreatePurchaseOrderUseCase,
@@ -17,14 +19,21 @@ export class PurchaseOrderController {
   ) {}
 
   public listPurchaseOrders = async (req: Request, res: Response): Promise<void> => {
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : (page - 1) * limit;
+
+    const rawStartDate = (req.query.startDate || req.query.fromDate) as string | undefined;
+    const rawEndDate = (req.query.endDate || req.query.toDate) as string | undefined;
+
     const filters = {
       supplierId: req.query.supplierId ? BigInt(req.query.supplierId as string) : undefined,
       status: req.query.status as string | undefined,
-      startDate: req.query.startDate ? new Date(req.query.startDate as string) : undefined,
-      endDate: req.query.endDate ? new Date(req.query.endDate as string) : undefined,
+      startDate: rawStartDate ? new Date(rawStartDate) : undefined,
+      endDate: rawEndDate ? new Date(rawEndDate) : undefined,
       search: req.query.search as string | undefined,
-      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 20,
-      offset: req.query.offset ? parseInt(req.query.offset as string, 10) : 0,
+      limit,
+      offset,
     };
 
     const result = await this.getPurchaseOrdersUseCase.execute(filters);
@@ -33,9 +42,8 @@ export class PurchaseOrderController {
       success: true,
       data: result.data,
       meta: {
-        total: result.total,
-        limit: filters.limit,
-        offset: filters.offset,
+        ...buildPaginationMeta(page, limit, result.total),
+        offset,
       },
       timestamp: new Date().toISOString(),
     });
@@ -84,7 +92,10 @@ export class PurchaseOrderController {
 
     res.status(200).json({
       success: true,
-      data: order,
+      data: {
+        ...order,
+        message: 'Đã xác nhận đặt hàng thành công. Số lượng hàng chờ về (On-Order) đã được cập nhật.',
+      },
       timestamp: new Date().toISOString(),
     });
   };
@@ -102,7 +113,10 @@ export class PurchaseOrderController {
 
     res.status(200).json({
       success: true,
-      data: order,
+      data: {
+        ...order,
+        message: 'Đã hủy đơn mua hàng. Lượng hàng On-Order đã được giải phóng.',
+      },
       timestamp: new Date().toISOString(),
     });
   };
@@ -122,7 +136,11 @@ export class PurchaseOrderController {
 
     res.status(200).json({
       success: true,
-      data: order,
+      data: {
+        ...order,
+        orderId: order.id,
+        message: 'Đã ghi nhận nhận hàng thành công. Tồn kho thực tế (On-Hand) đã được cập nhật.',
+      },
       timestamp: new Date().toISOString(),
     });
   };

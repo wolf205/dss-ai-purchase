@@ -7,3 +7,7 @@ export * from './ISupplierWeightConfigRepository';
 export * from './IDataImportLogRepository';
 export * from './IPurchaseOrderRepository';
 export * from './IDeliveryHistoryRepository';
+export * from './IDemandForecastRepository';
+export * from './IAbcXyzAnalysisRepository';
+export * from './IPurchaseRecommendationRepository';
+export * from './IColdStartRepository';

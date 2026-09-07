@@ -21,24 +21,40 @@ export class ImportSalesInventoryUseCase {
   public async execute(
     buffer: Buffer,
     originalFilename: string,
-    uploadedBy: string
+    uploadedBy: string,
+    requestedImportType?: 'SALES_HISTORY' | 'INVENTORY_SNAPSHOT',
+    overwriteDuplicateDates: boolean = true
   ): Promise<ImportDataResponseDTO> {
     // 1. Parse Excel / CSV File (BR-009, BR-010)
-    const parseResult = await this.fileParser.parseSalesAndInventoryFile(buffer, originalFilename);
+    const parseResult = await this.fileParser.parseSalesAndInventoryFile(
+      buffer,
+      originalFilename,
+      requestedImportType
+    );
     const errors: FileParseError[] = [...parseResult.errors];
 
     const totalRows = parseResult.salesRows.length + parseResult.inventoryRows.length + errors.length;
+    const finalImportType: 'SALES_HISTORY' | 'INVENTORY_SNAPSHOT' =
+      requestedImportType || (parseResult.inventoryRows.length > 0 ? 'INVENTORY_SNAPSHOT' : 'SALES_HISTORY');
 
-    // 2. Validate SKU existence for all rows
+    // 2. Validate SKU existence for all rows & fetch basePrice for fallback
     const uniqueSkus = new Set<string>();
     parseResult.salesRows.forEach((r) => uniqueSkus.add(r.sku));
     parseResult.inventoryRows.forEach((r) => uniqueSkus.add(r.sku));
 
     const skuExistenceMap = new Map<string, boolean>();
+    const productPriceMap = new Map<string, number>();
+
     await Promise.all(
       Array.from(uniqueSkus).map(async (sku) => {
         const exists = await this.productRepository.exists(sku);
         skuExistenceMap.set(sku, exists);
+        if (exists) {
+          const product = await this.productRepository.findBySku(sku);
+          if (product) {
+            productPriceMap.set(sku, product.sellingPrice);
+          }
+        }
       })
     );
 
@@ -71,7 +87,7 @@ export class ImportSalesInventoryUseCase {
       const failedLog = new DataImportLog({
         fileName: originalFilename,
         fileSizeBytes: buffer.length,
-        importType: parseResult.inventoryRows.length > 0 ? 'INVENTORY_SNAPSHOT' : 'SALES_HISTORY',
+        importType: finalImportType,
         totalRows,
         successfulRows: 0,
         failedRows: errors.length,
@@ -83,6 +99,8 @@ export class ImportSalesInventoryUseCase {
 
       return {
         importLogId: savedLog.id || '',
+        batchId: savedLog.id || '',
+        importType: finalImportType,
         fileName: originalFilename,
         status: 'FAILED',
         totalRows,
@@ -99,33 +117,11 @@ export class ImportSalesInventoryUseCase {
     const successfulInventoryCount = parseResult.inventoryRows.length;
 
     const savedLog = await this.unitOfWork.executeInTransaction(async () => {
-      // 4a. Batch save Sales History records
-      if (parseResult.salesRows.length > 0) {
-        const salesEntities = parseResult.salesRows.map(
-          (r) =>
-            new SalesHistory({
-              productSku: r.sku,
-              saleDate: r.saleDate,
-              quantitySold: r.quantitySold,
-              revenue: Math.round(r.quantitySold * r.unitSellingPrice * 100) / 100,
-              source: 'IMPORT_EXCEL',
-            })
-        );
-        await this.salesHistoryRepository.saveBatch(salesEntities);
-      }
-
-      // 4b. Update Inventory On-Hand records
-      if (parseResult.inventoryRows.length > 0) {
-        for (const row of parseResult.inventoryRows) {
-          await this.inventoryRepository.updateOnHand(row.sku, row.onHand);
-        }
-      }
-
-      // 4c. Record DataImportLog
+      // 4a. Record DataImportLog first to obtain batchId
       const log = new DataImportLog({
         fileName: originalFilename,
         fileSizeBytes: buffer.length,
-        importType: parseResult.inventoryRows.length > 0 ? 'INVENTORY_SNAPSHOT' : 'SALES_HISTORY',
+        importType: finalImportType,
         totalRows,
         successfulRows: totalRows,
         failedRows: 0,
@@ -133,11 +129,39 @@ export class ImportSalesInventoryUseCase {
         importedBy: uploadedBy,
       });
 
-      return await this.dataImportLogRepository.save(log);
+      const savedImportLog = await this.dataImportLogRepository.save(log);
+      const batchId = savedImportLog.id;
+
+      // 4b. Batch save Sales History records (with fallback pricing if unitSellingPrice is 0)
+      if (parseResult.salesRows.length > 0) {
+        const salesEntities = parseResult.salesRows.map((r) => {
+          const unitPrice = r.unitSellingPrice > 0 ? r.unitSellingPrice : (productPriceMap.get(r.sku) || 0);
+          return new SalesHistory({
+            productSku: r.sku,
+            saleDate: r.saleDate,
+            quantitySold: r.quantitySold,
+            revenue: Math.round(r.quantitySold * unitPrice * 100) / 100,
+            source: 'IMPORT_EXCEL',
+            importBatchId: batchId,
+          });
+        });
+        await this.salesHistoryRepository.saveBatch(salesEntities, overwriteDuplicateDates);
+      }
+
+      // 4c. Update Inventory On-Hand records
+      if (parseResult.inventoryRows.length > 0) {
+        for (const row of parseResult.inventoryRows) {
+          await this.inventoryRepository.updateOnHand(row.sku, row.onHand);
+        }
+      }
+
+      return savedImportLog;
     });
 
     return {
       importLogId: savedLog.id || '',
+      batchId: savedLog.id || '',
+      importType: finalImportType,
       fileName: originalFilename,
       status: 'SUCCESS',
       totalRows,
@@ -149,3 +173,4 @@ export class ImportSalesInventoryUseCase {
     };
   }
 }
+

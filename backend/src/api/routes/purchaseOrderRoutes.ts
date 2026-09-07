@@ -38,7 +38,13 @@ router.post(
   catchAsync(purchaseOrderController.createPurchaseOrder)
 );
 
-// PUT /purchase-orders/:id/confirm (Xác nhận đơn - UC-012)
+// POST & PUT /purchase-orders/:id/confirm (Xác nhận đơn - UC-012, Docs 7.2)
+router.post(
+  '/:id/confirm',
+  rbacMiddleware(['ADMIN', 'STAFF']),
+  validateParams(poIdParamSchema),
+  catchAsync(purchaseOrderController.confirmPurchaseOrder)
+);
 router.put(
   '/:id/confirm',
   rbacMiddleware(['ADMIN', 'STAFF']),
@@ -46,7 +52,14 @@ router.put(
   catchAsync(purchaseOrderController.confirmPurchaseOrder)
 );
 
-// PUT /purchase-orders/:id/cancel (Hủy đơn - UC-013)
+// POST & PUT /purchase-orders/:id/cancel (Hủy đơn - UC-013, Docs 7.4)
+router.post(
+  '/:id/cancel',
+  rbacMiddleware(['ADMIN', 'STAFF']),
+  validateParams(poIdParamSchema),
+  validateBody(cancelPurchaseOrderBodySchema),
+  catchAsync(purchaseOrderController.cancelPurchaseOrder)
+);
 router.put(
   '/:id/cancel',
   rbacMiddleware(['ADMIN', 'STAFF']),

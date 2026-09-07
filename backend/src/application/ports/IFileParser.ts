@@ -26,5 +26,9 @@ export interface FileParseResult {
 }
 
 export interface IFileParser {
-  parseSalesAndInventoryFile(buffer: Buffer, originalFilename: string): Promise<FileParseResult>;
+  parseSalesAndInventoryFile(
+    buffer: Buffer,
+    originalFilename: string,
+    importType?: 'SALES_HISTORY' | 'INVENTORY_SNAPSHOT'
+  ): Promise<FileParseResult>;
 }

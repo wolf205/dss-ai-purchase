@@ -39,12 +39,12 @@ export class ManageUserUseCase {
     };
   }
 
-  public async toggleActive(userId: string): Promise<UserResponseDTO> {
+  public async setStatus(userId: string, isActive: boolean): Promise<UserResponseDTO> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new EntityNotFoundException('người dùng', userId);
     }
-    user.setActiveStatus(!user.isActive);
+    user.setActiveStatus(isActive);
     const updated = await this.userRepository.update(user);
     return {
       id: updated.id || '',
@@ -58,5 +58,13 @@ export class ManageUserUseCase {
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
+  }
+
+  public async toggleActive(userId: string): Promise<UserResponseDTO> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new EntityNotFoundException('người dùng', userId);
+    }
+    return this.setStatus(userId, !user.isActive);
   }
 }
