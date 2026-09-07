@@ -19,7 +19,10 @@ export interface ISupplierRepository {
   // Product-Supplier price terms (ProductSupplier)
   findProductSupplier(productSku: string, supplierId: string): Promise<ProductSupplier | null>;
   findSuppliersByProductSku(productSku: string): Promise<{ supplier: Supplier; terms: ProductSupplier }[]>;
+  findAllProductSuppliers(): Promise<ProductSupplier[]>;
+  findProductSuppliersBySupplierId(supplierId: string): Promise<ProductSupplier[]>;
   saveProductSupplier(terms: ProductSupplier): Promise<ProductSupplier>;
   updateProductSupplier(terms: ProductSupplier): Promise<ProductSupplier>;
   deleteProductSupplier(productSku: string, supplierId: string): Promise<boolean>;
 }
+

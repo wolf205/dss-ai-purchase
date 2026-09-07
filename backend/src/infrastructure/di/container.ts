@@ -28,6 +28,7 @@ import { ManageUserUseCase } from '../../application/use-cases/user/ManageUserUs
 import { ManageSupplierUseCase } from '../../application/use-cases/supplier/ManageSupplierUseCase';
 import { UpdateSupplierWeightsUseCase } from '../../application/use-cases/supplier/UpdateSupplierWeightsUseCase';
 import { GetSupplierWeightsUseCase } from '../../application/use-cases/supplier/GetSupplierWeightsUseCase';
+import { GetSupplierEvaluationsUseCase } from '../../application/use-cases/supplier/GetSupplierEvaluationsUseCase';
 
 // Use Cases - Data Ingestion
 import { ImportSalesInventoryUseCase } from '../../application/use-cases/ingestion/ImportSalesInventoryUseCase';
@@ -38,6 +39,7 @@ import { AuthController } from '../../api/controllers/AuthController';
 import { SupplierController } from '../../api/controllers/SupplierController';
 import { UserController } from '../../api/controllers/UserController';
 import { DataImportController } from '../../api/controllers/DataImportController';
+import { PrismaDeliveryHistoryRepository } from '../repositories/PrismaDeliveryHistoryRepository';
 
 // ==========================================
 // 1. INITIALIZE INFRASTRUCTURE & REPOSITORIES
@@ -47,6 +49,7 @@ const inventoryRepository = new PrismaInventoryRepository();
 const salesHistoryRepository = new PrismaSalesHistoryRepository();
 const supplierRepository = new PrismaSupplierRepository();
 const supplierWeightConfigRepository = new PrismaSupplierWeightConfigRepository();
+const deliveryHistoryRepository = new PrismaDeliveryHistoryRepository();
 const userRepository = new PrismaUserRepository();
 const dataImportLogRepository = new PrismaDataImportLogRepository();
 
@@ -73,6 +76,11 @@ const manageUserUseCase = new ManageUserUseCase(userRepository, passwordHasher);
 const manageSupplierUseCase = new ManageSupplierUseCase(supplierRepository);
 const updateSupplierWeightsUseCase = new UpdateSupplierWeightsUseCase(supplierWeightConfigRepository);
 const getSupplierWeightsUseCase = new GetSupplierWeightsUseCase(supplierWeightConfigRepository);
+const getSupplierEvaluationsUseCase = new GetSupplierEvaluationsUseCase(
+  supplierRepository,
+  deliveryHistoryRepository,
+  supplierWeightConfigRepository
+);
 
 // Data Ingestion
 const importSalesInventoryUseCase = new ImportSalesInventoryUseCase(
@@ -103,7 +111,8 @@ export const authController = new AuthController(
 export const supplierController = new SupplierController(
   manageSupplierUseCase,
   updateSupplierWeightsUseCase,
-  getSupplierWeightsUseCase
+  getSupplierWeightsUseCase,
+  getSupplierEvaluationsUseCase
 );
 
 export const userController = new UserController(manageUserUseCase);
@@ -117,7 +126,6 @@ export const dataImportController = new DataImportController(
 // 4. PURCHASE ORDERS
 // ==========================================
 import { PrismaPurchaseOrderRepository } from '../repositories/PrismaPurchaseOrderRepository';
-import { PrismaDeliveryHistoryRepository } from '../repositories/PrismaDeliveryHistoryRepository';
 import { CreatePurchaseOrderUseCase } from '../../application/use-cases/purchase-orders/CreatePurchaseOrderUseCase';
 import { GetPurchaseOrdersUseCase } from '../../application/use-cases/purchase-orders/GetPurchaseOrdersUseCase';
 import { GetPurchaseOrderByIdUseCase } from '../../application/use-cases/purchase-orders/GetPurchaseOrderByIdUseCase';
@@ -127,7 +135,6 @@ import { ReceiveGoodsUseCase } from '../../application/use-cases/purchase-orders
 import { PurchaseOrderController } from '../../api/controllers/PurchaseOrderController';
 
 const purchaseOrderRepository = new PrismaPurchaseOrderRepository();
-const deliveryHistoryRepository = new PrismaDeliveryHistoryRepository();
 
 const createPurchaseOrderUseCase = new CreatePurchaseOrderUseCase(
   purchaseOrderRepository,

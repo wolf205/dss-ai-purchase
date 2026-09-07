@@ -70,3 +70,22 @@ export interface SupplierWeightsResponseDTO {
   updatedBy?: string | null;
   updatedAt: Date;
 }
+
+export interface SupplierEvaluationScoresDTO {
+  priceScore: number;
+  otifScore: number;
+  qualityScore: number;
+  leadTimeScore: number;
+}
+
+export interface SupplierEvaluationItemDTO {
+  supplierId: number;
+  supplierCode: string;
+  supplierName: string;
+  deliveryCountAnalyzed: number;
+  totalScore: number;
+  rank: number;
+  isNewSupplier: boolean;
+  scores: SupplierEvaluationScoresDTO;
+}
+

@@ -2,13 +2,24 @@ import { Request, Response } from 'express';
 import { ManageSupplierUseCase } from '../../application/use-cases/supplier/ManageSupplierUseCase';
 import { UpdateSupplierWeightsUseCase } from '../../application/use-cases/supplier/UpdateSupplierWeightsUseCase';
 import { GetSupplierWeightsUseCase } from '../../application/use-cases/supplier/GetSupplierWeightsUseCase';
+import { GetSupplierEvaluationsUseCase } from '../../application/use-cases/supplier/GetSupplierEvaluationsUseCase';
 
 export class SupplierController {
   constructor(
     private readonly manageSupplierUseCase: ManageSupplierUseCase,
     private readonly updateSupplierWeightsUseCase: UpdateSupplierWeightsUseCase,
-    private readonly getSupplierWeightsUseCase: GetSupplierWeightsUseCase
+    private readonly getSupplierWeightsUseCase: GetSupplierWeightsUseCase,
+    private readonly getSupplierEvaluationsUseCase: GetSupplierEvaluationsUseCase
   ) {}
+
+  public getEvaluations = async (_req: Request, res: Response): Promise<void> => {
+    const evaluations = await this.getSupplierEvaluationsUseCase.execute();
+    res.status(200).json({
+      success: true,
+      data: evaluations,
+      timestamp: new Date().toISOString(),
+    });
+  };
 
   public listSuppliers = async (req: Request, res: Response): Promise<void> => {
     const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
@@ -39,7 +50,19 @@ export class SupplierController {
   };
 
   public getSupplierById = async (req: Request, res: Response): Promise<void> => {
-    const supplier = await this.manageSupplierUseCase.getSupplierById(req.params.id);
+    const id = req.params.id;
+    if (!/^\d+$/.test(id)) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `Mã định danh nhà cung cấp không hợp lệ: ${id}`,
+        },
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    const supplier = await this.manageSupplierUseCase.getSupplierById(id);
     res.status(200).json({
       success: true,
       data: supplier,

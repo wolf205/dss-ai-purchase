@@ -117,6 +117,20 @@ export class PrismaSupplierRepository implements ISupplierRepository {
     }));
   }
 
+  public async findAllProductSuppliers(): Promise<ProductSupplier[]> {
+    const prisma = getPrismaClient();
+    const records = await prisma.productSupplier.findMany();
+    return records.map((r) => this.toDomainProductSupplier(r));
+  }
+
+  public async findProductSuppliersBySupplierId(supplierId: string): Promise<ProductSupplier[]> {
+    const prisma = getPrismaClient();
+    const records = await prisma.productSupplier.findMany({
+      where: { supplierId: BigInt(supplierId) },
+    });
+    return records.map((r) => this.toDomainProductSupplier(r));
+  }
+
   public async saveProductSupplier(terms: ProductSupplier): Promise<ProductSupplier> {
     const prisma = getPrismaClient();
     const record = await prisma.productSupplier.create({

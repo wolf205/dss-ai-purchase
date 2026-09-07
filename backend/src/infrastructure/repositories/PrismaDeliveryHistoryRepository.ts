@@ -65,4 +65,30 @@ export class PrismaDeliveryHistoryRepository implements IDeliveryHistoryReposito
       });
     });
   }
+
+  public async findRecentBySupplierId(supplierId: bigint, limit = 10): Promise<DeliveryHistory[]> {
+    const records = await this.getClient().deliveryHistory.findMany({
+      where: { supplierId },
+      orderBy: { actualDeliveryDate: 'desc' },
+      take: limit,
+    });
+
+    return records.map(record => {
+      return new DeliveryHistory({
+        id: record.id,
+        orderId: record.orderId,
+        supplierId: record.supplierId,
+        orderDate: new Date(),
+        promisedDate: record.promisedDate,
+        actualDeliveryDate: record.actualDeliveryDate,
+        totalOrderedQuantity: record.totalOrderedQuantity,
+        totalDeliveredQuantity: record.totalDeliveredQuantity,
+        totalDefectiveQuantity: record.totalDefectiveQuantity,
+        notes: record.notes,
+        receivedBy: record.receivedBy,
+        receivedAt: record.receivedAt
+      });
+    });
+  }
 }
+

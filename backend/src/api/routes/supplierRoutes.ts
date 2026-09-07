@@ -34,6 +34,9 @@ router.post(
   catchAsync(supplierController.setProductSupplierTerms)
 );
 
+// Supplier evaluations & ranking routes (UC-009)
+router.get('/evaluations', catchAsync(supplierController.getEvaluations));
+
 // General supplier CRUD routes (UC-002)
 router.get('/', validateQuery(supplierFilterSchema), catchAsync(supplierController.listSuppliers));
 router.get('/:id', catchAsync(supplierController.getSupplierById));
