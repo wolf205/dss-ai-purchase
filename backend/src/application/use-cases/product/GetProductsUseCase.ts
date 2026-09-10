@@ -9,12 +9,23 @@ export class GetProductsUseCase {
     const limit = Math.max(1, Math.min(100, filter?.limit ?? 20));
     const offset = (page - 1) * limit;
 
+    const allowedSortFields = ['sku', 'name', 'category', 'costPrice', 'sellingPrice', 'createdAt'] as const;
+    const sortBy = filter?.sortBy && allowedSortFields.includes(filter.sortBy as any)
+      ? filter.sortBy
+      : 'sku';
+    const sortOrder = filter?.sortOrder === 'desc' ? 'desc' : 'asc';
+
+    const cleanSearch = filter?.search?.trim() ? filter.search.trim() : undefined;
+    const cleanCategory = filter?.category?.trim() ? filter.category.trim() : undefined;
+
     const result = await this.productRepository.findAll({
-      category: filter?.category,
+      category: cleanCategory,
       isActive: filter?.isActive,
-      search: filter?.search,
+      search: cleanSearch,
       limit,
       offset,
+      sortBy,
+      sortOrder,
     });
 
     return {

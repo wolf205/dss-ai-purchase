@@ -2,14 +2,16 @@ import { Router } from 'express';
 import { supplierController } from '../../infrastructure/di/container';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { rbacMiddleware } from '../middlewares/rbacMiddleware';
-import { validateBody, validateQuery } from '../middlewares/validateMiddleware';
+import { validateBody, validateQuery, validateParams } from '../middlewares/validateMiddleware';
 import { catchAsync } from '../middlewares/catchAsync';
 import {
+  supplierIdParamSchema,
   createSupplierSchema,
   updateSupplierSchema,
   supplierFilterSchema,
   productSupplierTermsSchema,
   updateSupplierWeightsSchema,
+  supplierDeliveriesQuerySchema,
 } from '../validations/supplierValidations';
 
 const router = Router();
@@ -30,6 +32,7 @@ router.get('/product/:sku', catchAsync(supplierController.getSuppliersByProductS
 router.post(
   '/:id/products',
   rbacMiddleware(['ADMIN']),
+  validateParams(supplierIdParamSchema),
   validateBody(productSupplierTermsSchema),
   catchAsync(supplierController.setProductSupplierTerms)
 );
@@ -43,9 +46,21 @@ router.post(
 // Supplier evaluations & ranking routes (UC-009)
 router.get('/evaluations', catchAsync(supplierController.getEvaluations));
 
+// Supplier delivery history route (UC-009, FR-020, Docs 3.4)
+router.get(
+  '/:id/deliveries',
+  validateParams(supplierIdParamSchema),
+  validateQuery(supplierDeliveriesQuerySchema),
+  catchAsync(supplierController.getSupplierDeliveries)
+);
+
 // General supplier CRUD routes (UC-002)
 router.get('/', validateQuery(supplierFilterSchema), catchAsync(supplierController.listSuppliers));
-router.get('/:id', catchAsync(supplierController.getSupplierById));
+router.get(
+  '/:id',
+  validateParams(supplierIdParamSchema),
+  catchAsync(supplierController.getSupplierById)
+);
 
 router.post(
   '/',
@@ -54,9 +69,18 @@ router.post(
   catchAsync(supplierController.createSupplier)
 );
 
+router.put(
+  '/:id',
+  rbacMiddleware(['ADMIN']),
+  validateParams(supplierIdParamSchema),
+  validateBody(updateSupplierSchema),
+  catchAsync(supplierController.updateSupplier)
+);
+
 router.patch(
   '/:id',
   rbacMiddleware(['ADMIN']),
+  validateParams(supplierIdParamSchema),
   validateBody(updateSupplierSchema),
   catchAsync(supplierController.updateSupplier)
 );

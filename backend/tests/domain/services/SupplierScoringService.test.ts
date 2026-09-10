@@ -49,9 +49,9 @@ describe('SupplierScoringService', () => {
       expect(result.priceScore).toBe(80);
       expect(result.leadTimeScore).toBe(50);
       
-      // Default weights: OTIF 25%, Quality 20%, Price 35%, LeadTime 20%
-      // Total = 0.25*70 + 0.2*85 + 0.35*80 + 0.2*50 = 17.5 + 17 + 28 + 10 = 72.5
-      expect(result.totalScore).toBe(72.5);
+      // Default weights per BR-013: OTIF 35%, Quality 30%, Price 20%, LeadTime 15%
+      // Total = 0.35*70 + 0.3*85 + 0.2*80 + 0.15*50 = 24.5 + 25.5 + 16 + 7.5 = 73.5
+      expect(result.totalScore).toBe(73.5);
       expect(result.isNewSupplier).toBe(false);
     });
 
@@ -76,9 +76,9 @@ describe('SupplierScoringService', () => {
       expect(result.leadTimeScore).toBe(50);
       expect(result.isNewSupplier).toBe(true);
       
-      // Total score for NEW_SUPPLIER should be evenly distributed for known metrics (Price & LeadTime)
-      // 0.5 * 80 + 0.5 * 50 = 40 + 25 = 65
-      expect(result.totalScore).toBe(65);
+      // Total score for NEW_SUPPLIER normalized by known weights (Price 20% and LeadTime 15%):
+      // (0.20 * 80 + 0.15 * 50) / 0.35 = (16 + 7.5) / 0.35 = 23.5 / 0.35 = 67.14
+      expect(result.totalScore).toBe(67.14);
     });
 
     it('should handle zero price and lead time gracefully', () => {

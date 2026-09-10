@@ -2,12 +2,14 @@ import { Router } from 'express';
 import { productController } from '../../infrastructure/di/container';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { rbacMiddleware } from '../middlewares/rbacMiddleware';
-import { validateBody, validateQuery } from '../middlewares/validateMiddleware';
+import { validateBody, validateQuery, validateParams } from '../middlewares/validateMiddleware';
 import { catchAsync } from '../middlewares/catchAsync';
 import {
   createProductSchema,
   updateProductSchema,
   productFilterSchema,
+  skuParamSchema,
+  updateProductStatusSchema,
 } from '../validations/productValidations';
 
 const router = Router();
@@ -18,9 +20,9 @@ router.get('/', validateQuery(productFilterSchema), catchAsync(productController
 router.get('/categories', catchAsync(productController.getCategories));
 
 // Product 360 Analysis (UC-006)
-router.get('/:sku/360', catchAsync(productController.getProduct360));
+router.get('/:sku/360', validateParams(skuParamSchema), catchAsync(productController.getProduct360));
 
-router.get('/:sku', catchAsync(productController.getProductBySku));
+router.get('/:sku', validateParams(skuParamSchema), catchAsync(productController.getProductBySku));
 
 // Admin-only mutation routes
 router.post(
@@ -33,16 +35,18 @@ router.post(
 router.patch(
   '/:sku',
   rbacMiddleware(['ADMIN']),
+  validateParams(skuParamSchema),
   validateBody(updateProductSchema),
   catchAsync(productController.updateProduct)
 );
 
-// PATCH /:sku/status (Docs 2.3)
+// PATCH /:sku/status (Docs 2.3 / UC-001 / BR-021)
 router.patch(
   '/:sku/status',
   rbacMiddleware(['ADMIN']),
-  validateBody(updateProductSchema),
-  catchAsync(productController.updateProduct)
+  validateParams(skuParamSchema),
+  validateBody(updateProductStatusSchema),
+  catchAsync(productController.updateProductStatus)
 );
 
 export default router;

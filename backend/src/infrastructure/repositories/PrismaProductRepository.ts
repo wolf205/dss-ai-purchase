@@ -12,20 +12,39 @@ export class PrismaProductRepository implements IProductRepository {
     return this.toDomain(record);
   }
 
+  public async findBySkus(skus: string[]): Promise<Product[]> {
+    if (skus.length === 0) return [];
+    const normalized = skus.map((s) => s.trim().toUpperCase());
+    const prisma = getPrismaClient();
+    const records = await prisma.product.findMany({
+      where: {
+        sku: { in: normalized },
+      },
+    });
+    return records.map((r) => this.toDomain(r));
+  }
+
   public async findAll(options?: ProductFilterOptions): Promise<{ products: Product[]; total: number }> {
     const where: any = {};
-    if (options?.category) {
-      where.category = options.category;
+    if (options?.category?.trim()) {
+      where.category = options.category.trim();
     }
     if (options?.isActive !== undefined) {
       where.isActive = options.isActive;
     }
-    if (options?.search) {
+    const search = options?.search?.trim();
+    if (search && search.length > 0) {
       where.OR = [
-        { sku: { contains: options.search, mode: 'insensitive' } },
-        { name: { contains: options.search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
       ];
     }
+
+    const allowedSortFields = ['sku', 'name', 'category', 'costPrice', 'sellingPrice', 'createdAt'] as const;
+    const sortBy = options?.sortBy && allowedSortFields.includes(options.sortBy as any)
+      ? options.sortBy
+      : 'sku';
+    const sortOrder = options?.sortOrder === 'desc' ? 'desc' : 'asc';
 
     const prisma = getPrismaClient();
     const [records, total] = await Promise.all([
@@ -33,7 +52,7 @@ export class PrismaProductRepository implements IProductRepository {
         where,
         take: options?.limit,
         skip: options?.offset,
-        orderBy: { sku: 'asc' },
+        orderBy: { [sortBy]: sortOrder },
       }),
       prisma.product.count({ where }),
     ]);

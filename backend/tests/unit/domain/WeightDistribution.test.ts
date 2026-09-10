@@ -28,4 +28,12 @@ describe('WeightDistribution Value Object (BR-013, UC-017)', () => {
       'Trọng số đánh giá nhà cung cấp không được âm'
     );
   });
+
+  it('should return correct default weights per BR-013 and UC-017', () => {
+    const weights = WeightDistribution.defaultWeights();
+    expect(weights.weightPrice).toBe(0.20);
+    expect(weights.weightOtif).toBe(0.35);
+    expect(weights.weightQuality).toBe(0.30);
+    expect(weights.weightLeadTime).toBe(0.15);
+  });
 });

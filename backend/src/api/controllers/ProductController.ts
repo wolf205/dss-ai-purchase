@@ -4,6 +4,7 @@ import { UpdateProductUseCase } from '../../application/use-cases/product/Update
 import { GetProductsUseCase } from '../../application/use-cases/product/GetProductsUseCase';
 import { GetProductDetailUseCase } from '../../application/use-cases/product/GetProductDetailUseCase';
 import { GetProduct360UseCase } from '../../application/use-cases/product/GetProduct360UseCase';
+import { UpdateProductStatusUseCase } from '../../application/use-cases/product/UpdateProductStatusUseCase';
 import { buildPaginationMeta } from '../utils/pagination';
 
 export class ProductController {
@@ -12,22 +13,32 @@ export class ProductController {
     private readonly updateProductUseCase: UpdateProductUseCase,
     private readonly getProductsUseCase: GetProductsUseCase,
     private readonly getProductDetailUseCase: GetProductDetailUseCase,
-    private readonly getProduct360UseCase?: GetProduct360UseCase
+    private readonly getProduct360UseCase?: GetProduct360UseCase,
+    private readonly updateProductStatusUseCase?: UpdateProductStatusUseCase
   ) {}
 
   public listProducts = async (req: Request, res: Response): Promise<void> => {
-    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
-    const category = req.query.category as string | undefined;
-    const isActive = req.query.isActive !== undefined ? req.query.isActive === 'true' : undefined;
-    const search = req.query.search as string | undefined;
+    const query = req.query as unknown as {
+      page?: number;
+      limit?: number;
+      category?: string;
+      isActive?: boolean;
+      search?: string;
+      sortBy?: 'sku' | 'name' | 'category' | 'costPrice' | 'sellingPrice' | 'createdAt';
+      sortOrder?: 'asc' | 'desc';
+    };
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
 
     const result = await this.getProductsUseCase.execute({
       page,
       limit,
-      category,
-      isActive,
-      search,
+      category: query.category,
+      isActive: query.isActive,
+      search: query.search,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
     });
 
     res.status(200).json({
@@ -74,7 +85,9 @@ export class ProductController {
   };
 
   public createProduct = async (req: Request, res: Response): Promise<void> => {
-    const product = await this.createProductUseCase.execute(req.body);
+    const operatorUserId = req.user?.userId;
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+    const product = await this.createProductUseCase.execute(req.body, operatorUserId, ipAddress);
     res.status(201).json({
       success: true,
       data: product,
@@ -87,6 +100,26 @@ export class ProductController {
     res.status(200).json({
       success: true,
       data: product,
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  public updateProductStatus = async (req: Request, res: Response): Promise<void> => {
+    if (!this.updateProductStatusUseCase) {
+      res.status(501).json({ success: false, error: { message: 'Not implemented' } });
+      return;
+    }
+    const operatorUserId = req.user?.userId;
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+    const result = await this.updateProductStatusUseCase.execute(
+      req.params.sku,
+      req.body.isActive,
+      operatorUserId,
+      ipAddress
+    );
+    res.status(200).json({
+      success: true,
+      data: result,
       timestamp: new Date().toISOString(),
     });
   };

@@ -29,6 +29,9 @@ export interface InventoryItemDTO {
   daysOfSupply: number;
   riskLevel: string;
   isDeadStock: boolean;
+  abcClass?: string;
+  xyzClass?: string;
+  abcXyzSegment?: string;
 }
 
 export interface MatrixCellDTO {

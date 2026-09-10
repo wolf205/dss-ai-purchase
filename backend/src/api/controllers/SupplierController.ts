@@ -3,6 +3,7 @@ import { ManageSupplierUseCase } from '../../application/use-cases/supplier/Mana
 import { UpdateSupplierWeightsUseCase } from '../../application/use-cases/supplier/UpdateSupplierWeightsUseCase';
 import { GetSupplierWeightsUseCase } from '../../application/use-cases/supplier/GetSupplierWeightsUseCase';
 import { GetSupplierEvaluationsUseCase } from '../../application/use-cases/supplier/GetSupplierEvaluationsUseCase';
+import { GetSupplierDeliveriesUseCase } from '../../application/use-cases/supplier/GetSupplierDeliveriesUseCase';
 import { buildPaginationMeta } from '../utils/pagination';
 
 export class SupplierController {
@@ -10,7 +11,8 @@ export class SupplierController {
     private readonly manageSupplierUseCase: ManageSupplierUseCase,
     private readonly updateSupplierWeightsUseCase: UpdateSupplierWeightsUseCase,
     private readonly getSupplierWeightsUseCase: GetSupplierWeightsUseCase,
-    private readonly getSupplierEvaluationsUseCase: GetSupplierEvaluationsUseCase
+    private readonly getSupplierEvaluationsUseCase: GetSupplierEvaluationsUseCase,
+    private readonly getSupplierDeliveriesUseCase?: GetSupplierDeliveriesUseCase
   ) {}
 
   public getEvaluations = async (_req: Request, res: Response): Promise<void> => {
@@ -22,19 +24,43 @@ export class SupplierController {
     });
   };
 
+  public getSupplierDeliveries = async (req: Request, res: Response): Promise<void> => {
+    const supplierId = req.params.id;
+    const limit = req.query.limit ? Number(req.query.limit) : 10;
+    if (!this.getSupplierDeliveriesUseCase) {
+      res.status(500).json({ success: false, message: 'GetSupplierDeliveriesUseCase not injected' });
+      return;
+    }
+    const deliveries = await this.getSupplierDeliveriesUseCase.execute(supplierId, limit);
+    res.status(200).json({
+      success: true,
+      data: deliveries,
+      timestamp: new Date().toISOString(),
+    });
+  };
+
   public listSuppliers = async (req: Request, res: Response): Promise<void> => {
-    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
-    const statusTag = req.query.statusTag as string | undefined;
-    const isActive = req.query.isActive !== undefined ? req.query.isActive === 'true' : undefined;
-    const search = req.query.search as string | undefined;
+    const query = req.query as unknown as {
+      page?: number;
+      limit?: number;
+      statusTag?: string;
+      isActive?: boolean;
+      search?: string;
+      sortBy?: 'code' | 'name' | 'createdAt';
+      sortOrder?: 'asc' | 'desc';
+    };
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
 
     const result = await this.manageSupplierUseCase.getSuppliers({
       page,
       limit,
-      statusTag,
-      isActive,
-      search,
+      statusTag: query.statusTag,
+      isActive: query.isActive,
+      search: query.search,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
     });
 
     res.status(200).json({
@@ -46,19 +72,7 @@ export class SupplierController {
   };
 
   public getSupplierById = async (req: Request, res: Response): Promise<void> => {
-    const id = req.params.id;
-    if (!/^\d+$/.test(id)) {
-      res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: `Mã định danh nhà cung cấp không hợp lệ: ${id}`,
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-    const supplier = await this.manageSupplierUseCase.getSupplierById(id);
+    const supplier = await this.manageSupplierUseCase.getSupplierById(req.params.id);
     res.status(200).json({
       success: true,
       data: supplier,
@@ -67,7 +81,9 @@ export class SupplierController {
   };
 
   public createSupplier = async (req: Request, res: Response): Promise<void> => {
-    const supplier = await this.manageSupplierUseCase.createSupplier(req.body);
+    const operatorUserId = req.user?.userId;
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+    const supplier = await this.manageSupplierUseCase.createSupplier(req.body, operatorUserId, ipAddress);
     res.status(201).json({
       success: true,
       data: supplier,
@@ -76,7 +92,9 @@ export class SupplierController {
   };
 
   public updateSupplier = async (req: Request, res: Response): Promise<void> => {
-    const supplier = await this.manageSupplierUseCase.updateSupplier(req.params.id, req.body);
+    const operatorUserId = req.user?.userId;
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+    const supplier = await this.manageSupplierUseCase.updateSupplier(req.params.id, req.body, operatorUserId, ipAddress);
     res.status(200).json({
       success: true,
       data: supplier,
@@ -86,11 +104,17 @@ export class SupplierController {
 
   public setProductSupplierTerms = async (req: Request, res: Response): Promise<void> => {
     const supplierId = req.params.id || req.body.supplierId;
-    const terms = await this.manageSupplierUseCase.setProductSupplierTerms({
-      ...req.body,
-      supplierId,
-    });
-    res.status(200).json({
+    const operatorUserId = req.user?.userId;
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+    const terms = await this.manageSupplierUseCase.setProductSupplierTerms(
+      {
+        ...req.body,
+        supplierId,
+      },
+      operatorUserId,
+      ipAddress
+    );
+    res.status(201).json({
       success: true,
       data: terms,
       timestamp: new Date().toISOString(),

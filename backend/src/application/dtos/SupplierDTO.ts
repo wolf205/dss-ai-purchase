@@ -19,7 +19,7 @@ export interface UpdateSupplierRequestDTO {
 }
 
 export interface SupplierResponseDTO {
-  id: string;
+  id: number;
   code: string;
   name: string;
   phone: string;
@@ -27,8 +27,13 @@ export interface SupplierResponseDTO {
   address?: string | null;
   statusTag: SupplierStatusTag;
   isActive: boolean;
+  productCount: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface SupplierDetailResponseDTO extends SupplierResponseDTO {
+  products: ProductSupplierTermsResponseDTO[];
 }
 
 export interface SetProductSupplierTermsRequestDTO {
@@ -44,6 +49,7 @@ export interface SetProductSupplierTermsRequestDTO {
 export interface ProductSupplierTermsResponseDTO {
   id: string;
   productSku: string;
+  productName?: string;
   supplierId: string;
   purchasePrice: number;
   moq: number;
@@ -87,5 +93,20 @@ export interface SupplierEvaluationItemDTO {
   rank: number;
   isNewSupplier: boolean;
   scores: SupplierEvaluationScoresDTO;
+}
+
+export interface SupplierDeliveryResponseDTO {
+  id: number;
+  poId: number;
+  poCode: string;
+  promisedDeliveryDate: string;
+  actualDeliveryDate: string;
+  leadTimeDays: number;
+  totalOrderedQuantity: number;
+  totalDeliveredQuantity: number;
+  totalDefectiveQuantity: number;
+  isOtif: boolean;
+  notes: string | null;
+  createdAt: string;
 }
 

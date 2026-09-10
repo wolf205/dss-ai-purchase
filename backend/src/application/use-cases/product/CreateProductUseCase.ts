@@ -1,5 +1,6 @@
 import { IProductRepository } from '../../../domain/repositories/IProductRepository';
 import { IInventoryRepository } from '../../../domain/repositories/IInventoryRepository';
+import { IAuditLogRepository } from '../../../domain/repositories/IAuditLogRepository';
 import { IUnitOfWork } from '../../ports/IUnitOfWork';
 import { CreateProductRequestDTO, ProductResponseDTO } from '../../dtos/ProductDTO';
 import { Product } from '../../../domain/entities/Product';
@@ -10,10 +11,15 @@ export class CreateProductUseCase {
   constructor(
     private readonly productRepository: IProductRepository,
     private readonly inventoryRepository: IInventoryRepository,
-    private readonly unitOfWork: IUnitOfWork
+    private readonly unitOfWork: IUnitOfWork,
+    private readonly auditLogRepository?: IAuditLogRepository
   ) {}
 
-  public async execute(dto: CreateProductRequestDTO): Promise<ProductResponseDTO> {
+  public async execute(
+    dto: CreateProductRequestDTO,
+    operatorUserId?: string,
+    ipAddress?: string
+  ): Promise<ProductResponseDTO> {
     if (!dto.sku || !dto.name || !dto.category || !dto.unit) {
       throw new ValidationException('Vui lòng nhập đầy đủ các trường thông tin sản phẩm bắt buộc');
     }
@@ -35,33 +41,61 @@ export class CreateProductUseCase {
       minSafetyStock: dto.minSafetyStock,
     });
 
-    const saved = await this.unitOfWork.executeInTransaction(async () => {
-      const savedProduct = await this.productRepository.save(product);
+    try {
+      const saved = await this.unitOfWork.executeInTransaction(async () => {
+        const savedProduct = await this.productRepository.save(product);
 
-      // Initialize inventory for this product
-      const inventory = new Inventory({
-        productSku: savedProduct.sku.value,
-        onHand: 0,
-        onOrder: 0,
-        safetyStock: savedProduct.minSafetyStock,
+        // Khởi tạo bản ghi tồn kho tương ứng bảo đảm toàn vẹn ACID (BR-001)
+        const inventory = new Inventory({
+          productSku: savedProduct.sku.value,
+          onHand: 0,
+          onOrder: 0,
+          safetyStock: savedProduct.minSafetyStock,
+        });
+        await this.inventoryRepository.save(inventory);
+
+        return savedProduct;
       });
-      await this.inventoryRepository.save(inventory);
-      
-      return savedProduct;
-    });
 
-    return {
-      sku: saved.sku.value,
-      name: saved.name,
-      category: saved.category,
-      unit: saved.unit,
-      costPrice: saved.costPrice,
-      sellingPrice: saved.sellingPrice,
-      defaultLeadTime: saved.defaultLeadTime,
-      minSafetyStock: saved.minSafetyStock,
-      isActive: saved.isActive,
-      createdAt: saved.createdAt,
-      updatedAt: saved.updatedAt,
-    };
+      // Ghi nhận nhật ký kiểm toán tạo mới Master Data
+      if (this.auditLogRepository) {
+        await this.auditLogRepository.create({
+          userId: operatorUserId,
+          action: 'CREATE_PRODUCT',
+          entityName: 'products',
+          entityId: saved.sku.value,
+          newValues: {
+            name: saved.name,
+            category: saved.category,
+            unit: saved.unit,
+            costPrice: saved.costPrice,
+            sellingPrice: saved.sellingPrice,
+            defaultLeadTime: saved.defaultLeadTime,
+            minSafetyStock: saved.minSafetyStock,
+          },
+          ipAddress,
+        });
+      }
+
+      return {
+        sku: saved.sku.value,
+        name: saved.name,
+        category: saved.category,
+        unit: saved.unit,
+        costPrice: saved.costPrice,
+        sellingPrice: saved.sellingPrice,
+        defaultLeadTime: saved.defaultLeadTime,
+        minSafetyStock: saved.minSafetyStock,
+        isActive: saved.isActive,
+        createdAt: saved.createdAt,
+        updatedAt: saved.updatedAt,
+      };
+    } catch (err: any) {
+      // Bắt lỗi CSDL P2002 nếu xảy ra race condition khi tạo trùng SKU
+      if (err?.code === 'P2002' || err?.message?.includes('Unique constraint')) {
+        throw new DuplicateResourceException('Mã SKU', trimmedSku);
+      }
+      throw err;
+    }
   }
 }

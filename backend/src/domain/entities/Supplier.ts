@@ -10,6 +10,7 @@ export interface SupplierProps {
   address?: string | null;
   statusTag?: SupplierStatusTag;
   isActive?: boolean;
+  productCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -23,6 +24,7 @@ export class Supplier {
   private _address?: string | null;
   private _statusTag: SupplierStatusTag;
   private _isActive: boolean;
+  private _productCount: number;
   public readonly createdAt: Date;
   private _updatedAt: Date;
 
@@ -45,6 +47,7 @@ export class Supplier {
     this._address = props.address ? props.address.trim() : null;
     this._statusTag = props.statusTag ?? 'NEW_SUPPLIER';
     this._isActive = props.isActive ?? true;
+    this._productCount = props.productCount ?? 0;
     this.createdAt = props.createdAt ?? new Date();
     this._updatedAt = props.updatedAt ?? new Date();
   }
@@ -71,6 +74,10 @@ export class Supplier {
 
   public get isActive(): boolean {
     return this._isActive;
+  }
+
+  public get productCount(): number {
+    return this._productCount;
   }
 
   public get updatedAt(): Date {

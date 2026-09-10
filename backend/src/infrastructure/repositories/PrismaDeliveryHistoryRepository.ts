@@ -47,18 +47,16 @@ export class PrismaDeliveryHistoryRepository implements IDeliveryHistoryReposito
         id: record.id,
         orderId: record.orderId,
         supplierId: record.supplierId,
-        // Actually, orderDate is missing in DB schema for deliveryHistory.
-        // We might just pass a dummy orderDate here since it's only used for leadTimeDays which is already calculated and saved.
-        // Or better yet, we can fetch the order date if needed, but the entity needs it in the constructor...
-        // For findByOrderId, we'll pass a dummy because leadTimeDays won't be recomputed if we bypass constructor, but we can't easily bypass.
-        // Let's pass the promisedDate as a dummy orderDate since we're just reading. 
-        // This is a known caveat of Domain Entity initialization from DB without full aggregates.
-        orderDate: new Date(), 
         promisedDate: record.promisedDate,
         actualDeliveryDate: record.actualDeliveryDate,
         totalOrderedQuantity: record.totalOrderedQuantity,
         totalDeliveredQuantity: record.totalDeliveredQuantity,
         totalDefectiveQuantity: record.totalDefectiveQuantity,
+        totalAcceptedQuantity: record.totalAcceptedQuantity,
+        leadTimeDays: record.leadTimeDays,
+        isOnTime: record.isOnTime,
+        isInFull: record.isInFull,
+        isOtif: record.isOtif,
         notes: record.notes,
         receivedBy: record.receivedBy,
         receivedAt: record.receivedAt
@@ -69,6 +67,11 @@ export class PrismaDeliveryHistoryRepository implements IDeliveryHistoryReposito
   public async findRecentBySupplierId(supplierId: bigint, limit = 10): Promise<DeliveryHistory[]> {
     const records = await this.getClient().deliveryHistory.findMany({
       where: { supplierId },
+      include: {
+        order: {
+          select: { poCode: true },
+        },
+      },
       orderBy: { actualDeliveryDate: 'desc' },
       take: limit,
     });
@@ -77,13 +80,18 @@ export class PrismaDeliveryHistoryRepository implements IDeliveryHistoryReposito
       return new DeliveryHistory({
         id: record.id,
         orderId: record.orderId,
+        poCode: (record as any).order?.poCode,
         supplierId: record.supplierId,
-        orderDate: new Date(),
         promisedDate: record.promisedDate,
         actualDeliveryDate: record.actualDeliveryDate,
         totalOrderedQuantity: record.totalOrderedQuantity,
         totalDeliveredQuantity: record.totalDeliveredQuantity,
         totalDefectiveQuantity: record.totalDefectiveQuantity,
+        totalAcceptedQuantity: record.totalAcceptedQuantity,
+        leadTimeDays: record.leadTimeDays,
+        isOnTime: record.isOnTime,
+        isInFull: record.isInFull,
+        isOtif: record.isOtif,
         notes: record.notes,
         receivedBy: record.receivedBy,
         receivedAt: record.receivedAt

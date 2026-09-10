@@ -17,6 +17,7 @@ describe('GetSupplierEvaluationsUseCase (UC-009, BR-012, BR-013)', () => {
     mockSupplierRepo = {
       findById: jest.fn(),
       findByCode: jest.fn(),
+      findByName: jest.fn(),
       findAll: jest.fn(),
       save: jest.fn(),
       update: jest.fn(),
@@ -179,5 +180,77 @@ describe('GetSupplierEvaluationsUseCase (UC-009, BR-012, BR-013)', () => {
 
     // Verify ordering by totalScore descending
     expect(results[0].totalScore).toBeGreaterThanOrEqual(results[1].totalScore);
+  });
+
+  it('should evaluate per-SKU benchmark without cross-product price contamination (BR-012)', async () => {
+    // Supplier A sells cheap Milk (10k), Supplier B sells expensive Laptop (20m)
+    // In cross-product benchmark, Supplier B would get (10k / 20m) * 100 = 0.05 score!
+    // In per-SKU benchmark, since Supplier B is the only seller of Laptop, it should get 100 price score!
+    const supplierA = new Supplier({
+      id: '10',
+      code: 'SUP-MILK',
+      name: 'Vinamilk',
+      phone: '0123456789',
+      isActive: true,
+    });
+
+    const supplierB = new Supplier({
+      id: '20',
+      code: 'SUP-TECH',
+      name: 'Tech Corp',
+      phone: '0987654321',
+      isActive: true,
+    });
+
+    mockSupplierRepo.findAll.mockResolvedValue({ suppliers: [supplierA, supplierB], total: 2 });
+    mockWeightRepo.getLatest.mockResolvedValue(null); // Use default weights
+
+    const milkTerm = new ProductSupplier({
+      productSku: 'SKU-MILK',
+      supplierId: '10',
+      purchasePrice: 10000,
+      committedLeadTime: 2,
+    });
+
+    const laptopTerm = new ProductSupplier({
+      productSku: 'SKU-LAPTOP',
+      supplierId: '20',
+      purchasePrice: 20000000,
+      committedLeadTime: 5,
+    });
+
+    mockSupplierRepo.findAllProductSuppliers.mockResolvedValue([milkTerm, laptopTerm]);
+
+    // Supplier B has 3 deliveries with exact leadTimeDays preserved from DB
+    const d1 = new DeliveryHistory({
+      orderId: 201n,
+      supplierId: 20n,
+      promisedDate: new Date('2026-08-05'),
+      actualDeliveryDate: new Date('2026-08-04'),
+      totalOrderedQuantity: 10,
+      totalDeliveredQuantity: 10,
+      totalDefectiveQuantity: 0,
+      leadTimeDays: 2, // Persisted lead time
+      isOnTime: true,
+      isInFull: true,
+      isOtif: true,
+      receivedBy: '00000000-0000-0000-0000-000000000001',
+    });
+
+    mockDeliveryRepo.findRecentBySupplierId.mockImplementation(async (supplierId) => {
+      if (supplierId === 20n) return [d1, d1, d1];
+      return [];
+    });
+
+    const results = await useCase.execute();
+
+    const techSupplier = results.find((r) => r.supplierId === 20);
+    expect(techSupplier).toBeDefined();
+    // Supplier B must get 100 for price score (not 0.05!) because it is the sole provider of SKU-LAPTOP
+    expect(techSupplier!.scores.priceScore).toBe(100);
+    expect(techSupplier!.scores.leadTimeScore).toBe(100);
+    expect(techSupplier!.scores.otifScore).toBe(100);
+    expect(techSupplier!.scores.qualityScore).toBe(100);
+    expect(techSupplier!.totalScore).toBe(100);
   });
 });

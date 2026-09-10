@@ -45,7 +45,9 @@ export class WeightDistribution {
   }
 
   public static defaultWeights(): WeightDistribution {
-    return new WeightDistribution(0.35, 0.25, 0.20, 0.20);
+    // BR-013, UC-017: OTIF 35%, Quality 30%, Price 20%, Lead Time 15%
+    // Constructor parameter order: (weightPrice, weightOtif, weightQuality, weightLeadTime)
+    return new WeightDistribution(0.20, 0.35, 0.30, 0.15);
   }
 
   public toArray(): [number, number, number, number] {

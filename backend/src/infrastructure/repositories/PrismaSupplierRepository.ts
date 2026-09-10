@@ -5,21 +5,51 @@ import { ISupplierRepository, SupplierFilterOptions } from '../../domain/reposit
 
 export class PrismaSupplierRepository implements ISupplierRepository {
   public async findById(id: string): Promise<Supplier | null> {
+    let bigIntId: bigint;
+    try {
+      bigIntId = BigInt(id);
+    } catch {
+      return null;
+    }
     const prisma = getPrismaClient();
     const record = await prisma.supplier.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: bigIntId },
+      include: {
+        _count: {
+          select: { productSuppliers: true },
+        },
+      },
     });
     if (!record) return null;
-    return this.toDomainSupplier(record);
+    return this.toDomainSupplier(record, (record as any)._count?.productSuppliers);
   }
 
   public async findByCode(code: string): Promise<Supplier | null> {
     const prisma = getPrismaClient();
     const record = await prisma.supplier.findUnique({
       where: { code: code.trim().toUpperCase() },
+      include: {
+        _count: {
+          select: { productSuppliers: true },
+        },
+      },
     });
     if (!record) return null;
-    return this.toDomainSupplier(record);
+    return this.toDomainSupplier(record, (record as any)._count?.productSuppliers);
+  }
+
+  public async findByName(name: string): Promise<Supplier | null> {
+    const prisma = getPrismaClient();
+    const record = await prisma.supplier.findFirst({
+      where: { name: { equals: name.trim(), mode: 'insensitive' } },
+      include: {
+        _count: {
+          select: { productSuppliers: true },
+        },
+      },
+    });
+    if (!record) return null;
+    return this.toDomainSupplier(record, (record as any)._count?.productSuppliers);
   }
 
   public async findAll(options?: SupplierFilterOptions): Promise<{ suppliers: Supplier[]; total: number }> {
@@ -38,18 +68,26 @@ export class PrismaSupplierRepository implements ISupplierRepository {
     }
 
     const prisma = getPrismaClient();
+    const sortField = options?.sortBy || 'code';
+    const sortDirection = options?.sortOrder || 'asc';
+
     const [records, total] = await Promise.all([
       prisma.supplier.findMany({
         where,
         take: options?.limit,
         skip: options?.offset,
-        orderBy: { code: 'asc' },
+        orderBy: { [sortField]: sortDirection },
+        include: {
+          _count: {
+            select: { productSuppliers: true },
+          },
+        },
       }),
       prisma.supplier.count({ where }),
     ]);
 
     return {
-      suppliers: records.map((r) => this.toDomainSupplier(r)),
+      suppliers: records.map((r: any) => this.toDomainSupplier(r, r._count?.productSuppliers)),
       total,
     };
   }
@@ -83,8 +121,13 @@ export class PrismaSupplierRepository implements ISupplierRepository {
         statusTag: supplier.statusTag as any,
         isActive: supplier.isActive,
       },
+      include: {
+        _count: {
+          select: { productSuppliers: true },
+        },
+      },
     });
-    return this.toDomainSupplier(record);
+    return this.toDomainSupplier(record, (record as any)._count?.productSuppliers);
   }
 
   public async findProductSupplier(productSku: string, supplierId: string): Promise<ProductSupplier | null> {
@@ -124,11 +167,19 @@ export class PrismaSupplierRepository implements ISupplierRepository {
   }
 
   public async findProductSuppliersBySupplierId(supplierId: string): Promise<ProductSupplier[]> {
+    let bigIntId: bigint;
+    try {
+      bigIntId = BigInt(supplierId);
+    } catch {
+      return [];
+    }
     const prisma = getPrismaClient();
     const records = await prisma.productSupplier.findMany({
-      where: { supplierId: BigInt(supplierId) },
+      where: { supplierId: bigIntId },
+      include: { product: true },
+      orderBy: [{ isPreferred: 'desc' }, { productSku: 'asc' }],
     });
-    return records.map((r) => this.toDomainProductSupplier(r));
+    return records.map((r) => this.toDomainProductSupplier(r, (r as any).product?.name));
   }
 
   public async saveProductSupplier(terms: ProductSupplier): Promise<ProductSupplier> {
@@ -184,7 +235,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
     }
   }
 
-  private toDomainSupplier(record: any): Supplier {
+  private toDomainSupplier(record: any, productCount?: number): Supplier {
     return new Supplier({
       id: record.id.toString(),
       code: record.code,
@@ -194,12 +245,13 @@ export class PrismaSupplierRepository implements ISupplierRepository {
       address: record.address,
       statusTag: record.statusTag as SupplierStatusTag,
       isActive: record.isActive,
+      productCount: record._count?.productSuppliers ?? productCount ?? 0,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });
   }
 
-  private toDomainProductSupplier(record: any): ProductSupplier {
+  private toDomainProductSupplier(record: any, productName?: string): ProductSupplier {
     return new ProductSupplier({
       id: record.id.toString(),
       productSku: record.productSku,
@@ -209,6 +261,7 @@ export class PrismaSupplierRepository implements ISupplierRepository {
       packSize: record.packSize,
       committedLeadTime: record.committedLeadTime,
       isPreferred: record.isPreferred,
+      productName: productName ?? record.product?.name,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });

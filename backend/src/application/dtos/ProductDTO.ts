@@ -1,3 +1,5 @@
+import { ProductSortField, SortOrder } from '../../domain/repositories/IProductRepository';
+
 export interface CreateProductRequestDTO {
   sku: string;
   name: string;
@@ -40,4 +42,12 @@ export interface ProductFilterDTO {
   search?: string;
   page?: number;
   limit?: number;
+  sortBy?: ProductSortField;
+  sortOrder?: SortOrder;
+}
+
+export interface UpdateProductStatusResponseDTO {
+  sku: string;
+  isActive: boolean;
+  message: string;
 }

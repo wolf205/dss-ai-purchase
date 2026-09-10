@@ -7,11 +7,14 @@ export interface SupplierFilterOptions {
   search?: string;
   limit?: number;
   offset?: number;
+  sortBy?: 'code' | 'name' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface ISupplierRepository {
   findById(id: string): Promise<Supplier | null>;
   findByCode(code: string): Promise<Supplier | null>;
+  findByName(name: string): Promise<Supplier | null>;
   findAll(options?: SupplierFilterOptions): Promise<{ suppliers: Supplier[]; total: number }>;
   save(supplier: Supplier): Promise<Supplier>;
   update(supplier: Supplier): Promise<Supplier>;

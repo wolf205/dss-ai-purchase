@@ -8,6 +8,7 @@ export interface ProductSupplierProps {
   packSize?: number;
   committedLeadTime?: number;
   isPreferred?: boolean;
+  productName?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -21,6 +22,7 @@ export class ProductSupplier {
   private _packSize: number;
   private _committedLeadTime: number;
   private _isPreferred: boolean;
+  public readonly productName?: string;
   public readonly createdAt: Date;
   private _updatedAt: Date;
 
@@ -43,6 +45,7 @@ export class ProductSupplier {
     this._packSize = Math.max(1, Math.floor(props.packSize ?? 1));
     this._committedLeadTime = Math.max(1, Math.floor(props.committedLeadTime ?? 1));
     this._isPreferred = props.isPreferred ?? false;
+    this.productName = props.productName;
     this.createdAt = props.createdAt ?? new Date();
     this._updatedAt = props.updatedAt ?? new Date();
   }

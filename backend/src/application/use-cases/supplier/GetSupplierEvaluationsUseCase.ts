@@ -1,11 +1,7 @@
 import { ISupplierRepository } from '../../../domain/repositories/ISupplierRepository';
 import { IDeliveryHistoryRepository } from '../../../domain/repositories/IDeliveryHistoryRepository';
 import { ISupplierWeightConfigRepository } from '../../../domain/repositories/ISupplierWeightConfigRepository';
-import {
-  SupplierScoringService,
-  SupplierPerformanceMetrics,
-  SupplierScoringBenchmark,
-} from '../../../domain/services/SupplierScoringService';
+import { SupplierScoringService } from '../../../domain/services/SupplierScoringService';
 import { WeightDistribution } from '../../../domain/value-objects/WeightDistribution';
 import { SupplierEvaluationItemDTO } from '../../dtos/SupplierDTO';
 
@@ -27,19 +23,29 @@ export class GetSupplierEvaluationsUseCase {
     const weightConfig = await this.supplierWeightConfigRepository.getLatest();
     const weights = weightConfig
       ? weightConfig.weights
-      : new WeightDistribution(20, 35, 30, 15);
+      : WeightDistribution.defaultWeights();
 
-    // 3. Lấy toàn bộ bảng giá và điều khoản sản phẩm của NCC để tính benchmark
+    // 3. Lấy toàn bộ bảng giá và điều khoản sản phẩm của NCC để tính benchmark theo từng SKU (BR-012)
     const allProductSuppliers = await this.supplierRepository.findAllProductSuppliers();
 
-    // Tìm minPrice và minLeadTime trên toàn hệ thống làm Benchmark (BR-012)
-    const validPrices = allProductSuppliers.map((p) => p.purchasePrice).filter((p) => p > 0);
-    const validLeadTimes = allProductSuppliers.map((p) => p.committedLeadTime).filter((lt) => lt > 0);
+    // Nhóm terms theo productSku để tìm P_min(j) và LT_min(j) riêng cho từng SKU (BR-012)
+    const minPriceBySku = new Map<string, number>();
+    const minLeadTimeBySku = new Map<string, number>();
 
-    const benchmark: SupplierScoringBenchmark = {
-      minPrice: validPrices.length > 0 ? Math.min(...validPrices) : 0,
-      minLeadTime: validLeadTimes.length > 0 ? Math.min(...validLeadTimes) : 0,
-    };
+    for (const term of allProductSuppliers) {
+      if (term.purchasePrice > 0) {
+        const currentMinPrice = minPriceBySku.get(term.productSku);
+        if (currentMinPrice === undefined || term.purchasePrice < currentMinPrice) {
+          minPriceBySku.set(term.productSku, term.purchasePrice);
+        }
+      }
+      if (term.committedLeadTime > 0) {
+        const currentMinLt = minLeadTimeBySku.get(term.productSku);
+        if (currentMinLt === undefined || term.committedLeadTime < currentMinLt) {
+          minLeadTimeBySku.set(term.productSku, term.committedLeadTime);
+        }
+      }
+    }
 
     // Nhóm ProductSupplier theo supplierId để tra cứu nhanh O(1)
     const termsBySupplier = new Map<string, typeof allProductSuppliers>();
@@ -49,66 +55,83 @@ export class GetSupplierEvaluationsUseCase {
       termsBySupplier.set(term.supplierId, list);
     }
 
-    // 4. Đánh giá cho từng nhà cung cấp
-    const evaluationResults: Omit<SupplierEvaluationItemDTO, 'rank'>[] = [];
+    // 4. Đánh giá song song cho từng nhà cung cấp (Tối ưu I/O bằng Promise.all)
+    const evaluationResults: Omit<SupplierEvaluationItemDTO, 'rank'>[] = await Promise.all(
+      suppliers.map(async (supplier) => {
+        const supplierIdStr = supplier.id?.toString() || '0';
+        const supplierIdBigInt = BigInt(supplierIdStr);
 
-    for (const supplier of suppliers) {
-      const supplierIdStr = supplier.id?.toString() || '0';
-      const supplierIdBigInt = BigInt(supplierIdStr);
+        // Lấy tối đa 10 lần giao hàng gần nhất từ DeliveryHistory (BR-012, BR-013)
+        const deliveries = await this.deliveryHistoryRepository.findRecentBySupplierId(supplierIdBigInt, 10);
 
-      // Lấy tối đa 10 lần giao hàng gần nhất từ DeliveryHistory (BR-012, BR-013)
-      const deliveries = await this.deliveryHistoryRepository.findRecentBySupplierId(supplierIdBigInt, 10);
+        const supplierTerms = termsBySupplier.get(supplierIdStr) || [];
 
-      const supplierTerms = termsBySupplier.get(supplierIdStr) || [];
-      const supplierPrices = supplierTerms.map((t) => t.purchasePrice).filter((p) => p > 0);
-      const supplierLeadTimes = supplierTerms.map((t) => t.committedLeadTime).filter((lt) => lt > 0);
+        // 4.1. Điểm Giá S_price(i) = (1/M) * SUM( P_min(j) / P_supplier(i, j) * 100 ) (BR-012)
+        const validPriceTerms = supplierTerms.filter((t) => t.purchasePrice > 0);
+        let priceScore = 100;
+        if (validPriceTerms.length > 0) {
+          const skuPriceScores = validPriceTerms.map((t) => {
+            const minPrice = minPriceBySku.get(t.productSku) ?? t.purchasePrice;
+            return SupplierScoringService.calculatePriceScore(t.purchasePrice, minPrice);
+          });
+          priceScore = skuPriceScores.reduce((sum, s) => sum + s, 0) / skuPriceScores.length;
+        }
 
-      const avgSupplierPrice = supplierPrices.length > 0
-        ? supplierPrices.reduce((a, b) => a + b, 0) / supplierPrices.length
-        : 0;
+        // 4.2. Điểm Lead Time S_leadtime(i) = (1/M) * SUM( LT_min(j) / LT_supplier(i, j) * 100 ) (BR-012)
+        const validLeadTimeTerms = supplierTerms.filter((t) => t.committedLeadTime > 0);
+        let leadTimeScore = 100;
+        if (validLeadTimeTerms.length > 0) {
+          const skuLtScores = validLeadTimeTerms.map((t) => {
+            const minLt = minLeadTimeBySku.get(t.productSku) ?? t.committedLeadTime;
+            return SupplierScoringService.calculateLeadTimeScore(t.committedLeadTime, minLt);
+          });
+          leadTimeScore = skuLtScores.reduce((sum, s) => sum + s, 0) / skuLtScores.length;
+        }
 
-      const avgSupplierCommittedLeadTime = supplierLeadTimes.length > 0
-        ? supplierLeadTimes.reduce((a, b) => a + b, 0) / supplierLeadTimes.length
-        : 0;
+        // 4.3. Điểm OTIF và Chất lượng từ lịch sử nhận hàng
+        const totalDeliveries = deliveries.length;
+        const onTimeInFullCount = deliveries.filter((d) => d.isOtif).length;
+        const totalDeliveredQuantity = deliveries.reduce((sum, d) => sum + d.totalDeliveredQuantity, 0);
+        const totalDefectiveQuantity = deliveries.reduce((sum, d) => sum + d.totalDefectiveQuantity, 0);
 
-      // Tính metrics từ lịch sử giao hàng
-      const totalDeliveries = deliveries.length;
-      const onTimeInFullCount = deliveries.filter((d) => d.isOtif).length;
-      const totalOrderedQuantity = deliveries.reduce((sum, d) => sum + d.totalOrderedQuantity, 0);
-      const totalDeliveredQuantity = deliveries.reduce((sum, d) => sum + d.totalDeliveredQuantity, 0);
-      const totalDefectiveQuantity = deliveries.reduce((sum, d) => sum + d.totalDefectiveQuantity, 0);
+        const otifScore = totalDeliveries > 0
+          ? Math.min(100, Math.max(0, (onTimeInFullCount / totalDeliveries) * 100))
+          : 50.0; // Baseline cho NCC chưa có lần giao
 
-      const avgDeliveryLeadTime = totalDeliveries > 0
-        ? deliveries.reduce((sum, d) => sum + d.leadTimeDays, 0) / totalDeliveries
-        : avgSupplierCommittedLeadTime;
+        let qualityScore = 100;
+        if (totalDeliveredQuantity > 0) {
+          const defectRate = (totalDefectiveQuantity / totalDeliveredQuantity) * 100;
+          qualityScore = Math.min(100, Math.max(0, 100 - defectRate));
+        } else if (totalDeliveries === 0) {
+          qualityScore = 50.0;
+        }
 
-      const metrics: SupplierPerformanceMetrics = {
-        totalDeliveries,
-        onTimeInFullCount,
-        totalOrderedQuantity,
-        totalDeliveredQuantity,
-        totalDefectiveQuantity,
-        averageLeadTimeDays: avgDeliveryLeadTime,
-        supplierPrice: avgSupplierPrice,
-      };
+        // 4.4. Tính điểm tổng hợp và cờ NEW_SUPPLIER (BR-013)
+        const composite = SupplierScoringService.calculateCompositeScore(
+          priceScore,
+          otifScore,
+          qualityScore,
+          leadTimeScore,
+          totalDeliveries,
+          weights
+        );
 
-      const scoreResult = SupplierScoringService.calculateScores(metrics, benchmark, weights);
-
-      evaluationResults.push({
-        supplierId: Number(supplier.id) || 0,
-        supplierCode: supplier.code,
-        supplierName: supplier.name,
-        deliveryCountAnalyzed: totalDeliveries,
-        totalScore: scoreResult.totalScore,
-        isNewSupplier: scoreResult.isNewSupplier,
-        scores: {
-          priceScore: scoreResult.priceScore,
-          otifScore: scoreResult.otifScore,
-          qualityScore: scoreResult.qualityScore,
-          leadTimeScore: scoreResult.leadTimeScore,
-        },
-      });
-    }
+        return {
+          supplierId: Number(supplier.id) || 0,
+          supplierCode: supplier.code,
+          supplierName: supplier.name,
+          deliveryCountAnalyzed: totalDeliveries,
+          totalScore: composite.totalScore,
+          isNewSupplier: composite.isNewSupplier,
+          scores: {
+            priceScore: Math.round(priceScore * 100) / 100,
+            otifScore: Math.round(otifScore * 100) / 100,
+            qualityScore: Math.round(qualityScore * 100) / 100,
+            leadTimeScore: Math.round(leadTimeScore * 100) / 100,
+          },
+        };
+      })
+    );
 
     // 5. Sắp xếp danh sách theo totalScore giảm dần và gán rank 1, 2, 3... (UC-009)
     evaluationResults.sort((a, b) => b.totalScore - a.totalScore);
