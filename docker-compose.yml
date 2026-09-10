@@ -57,15 +57,15 @@ services:
     container_name: dss-backend
     restart: always
     environment:
-      PORT: 5000
+      PORT: 3000
       NODE_ENV: production
       DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dss_secure_password_2026}@postgres:5432/${POSTGRES_DB:-dss_ai_purchase_db}?schema=public"
       AI_SERVICE_URL: "http://ai-service:8000"
       JWT_SECRET: ${JWT_SECRET:-dss_super_secret_jwt_key_graduation_2026}
       JWT_EXPIRES_IN: "8h"
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://localhost:3000}
     ports:
-      - "${BACKEND_PORT:-5000}:5000"
+      - "${BACKEND_PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,7 +74,7 @@ services:
     networks:
       - dss-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/api/v1/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/v1/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -90,7 +90,7 @@ services:
     container_name: dss-frontend
     restart: always
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
       backend:
         condition: service_healthy

@@ -58,7 +58,7 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
-EXPOSE 5000
+EXPOSE 3000
 
 # Khởi động an toàn: migrate deploy, seed an toàn không chặn server, exec node (Bug 3)
 CMD ["sh", "-c", "npx prisma migrate deploy && (node dist/prisma/seed.js || echo '⚠️ Seed already applied or skipped.') && exec node dist/api/server.js"]
