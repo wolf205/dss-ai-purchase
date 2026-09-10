@@ -83,7 +83,7 @@ export class User {
       throw new DomainException('Họ tên và email không được để trống', 'BUSINESS_RULE_VIOLATION');
     }
     this._fullName = fullName.trim();
-    this._email = email.trim();
+    this._email = email.trim().toLowerCase();
     this._updatedAt = new Date();
   }
 
@@ -100,6 +100,12 @@ export class User {
   public updatePassword(passwordHash: string): void {
     this._passwordHash = passwordHash;
     this._mustChangePassword = false;
+    this._updatedAt = new Date();
+  }
+
+  public resetPassword(newPasswordHash: string): void {
+    this._passwordHash = newPasswordHash;
+    this._mustChangePassword = true;
     this._updatedAt = new Date();
   }
 

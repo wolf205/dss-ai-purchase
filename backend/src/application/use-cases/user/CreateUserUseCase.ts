@@ -10,28 +10,35 @@ export class CreateUserUseCase {
     private readonly passwordHasher: IPasswordHasher
   ) {}
 
-  public async execute(dto: CreateUserRequestDTO): Promise<UserResponseDTO> {
+  public async execute(
+    dto: CreateUserRequestDTO,
+    _operatorUserId?: string
+  ): Promise<UserResponseDTO> {
     if (!dto.username || !dto.password || !dto.fullName || !dto.email) {
       throw new ValidationException('Vui lòng điền đầy đủ tất cả các trường thông tin');
     }
 
-    const existingUsername = await this.userRepository.findByUsername(dto.username.trim());
+    const username = dto.username.trim();
+    const email = dto.email.trim().toLowerCase();
+    const fullName = dto.fullName.trim();
+
+    const existingUsername = await this.userRepository.findByUsername(username);
     if (existingUsername) {
-      throw new DuplicateResourceException('Tên đăng nhập', dto.username);
+      throw new DuplicateResourceException('Tên đăng nhập', username);
     }
 
-    const existingEmail = await this.userRepository.findByEmail(dto.email.trim());
+    const existingEmail = await this.userRepository.findByEmail(email);
     if (existingEmail) {
-      throw new DuplicateResourceException('Email', dto.email);
+      throw new DuplicateResourceException('Email', email);
     }
 
     const passwordHash = await this.passwordHasher.hash(dto.password);
 
     const user = new User({
-      username: dto.username.trim(),
+      username,
       passwordHash,
-      fullName: dto.fullName.trim(),
-      email: dto.email.trim().toLowerCase(),
+      fullName,
+      email,
       role: dto.role || 'STAFF',
       isActive: true,
       mustChangePassword: true,

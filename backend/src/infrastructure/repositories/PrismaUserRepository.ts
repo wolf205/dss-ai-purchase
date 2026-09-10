@@ -1,6 +1,8 @@
 import { getPrismaClient } from '../database/prisma';
 import { User, UserRole } from '../../domain/entities/User';
-import { IUserRepository } from '../../domain/repositories/IUserRepository';
+import { IUserRepository, UserFilterOptions, UserListResult } from '../../domain/repositories/IUserRepository';
+import { DuplicateResourceException } from '../../application/exceptions/DuplicateResourceException';
+import { EntityNotFoundException } from '../../application/exceptions/EntityNotFoundException';
 
 export class PrismaUserRepository implements IUserRepository {
   public async findById(id: string): Promise<User | null> {
@@ -14,8 +16,8 @@ export class PrismaUserRepository implements IUserRepository {
 
   public async findByUsername(username: string): Promise<User | null> {
     const prisma = getPrismaClient();
-    const record = await prisma.user.findUnique({
-      where: { username },
+    const record = await prisma.user.findFirst({
+      where: { username: { equals: username.trim(), mode: 'insensitive' } },
     });
     if (!record) return null;
     return this.toDomain(record);
@@ -23,14 +25,15 @@ export class PrismaUserRepository implements IUserRepository {
 
   public async findByEmail(email: string): Promise<User | null> {
     const prisma = getPrismaClient();
-    const record = await prisma.user.findUnique({
-      where: { email },
+    const normalizedEmail = email.trim().toLowerCase();
+    const record = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
     });
     if (!record) return null;
     return this.toDomain(record);
   }
 
-  public async findAll(options?: { isActive?: boolean; role?: string }): Promise<User[]> {
+  public async findAll(options?: UserFilterOptions): Promise<UserListResult> {
     const where: any = {};
     if (options?.isActive !== undefined) {
       where.isActive = options.isActive;
@@ -38,13 +41,30 @@ export class PrismaUserRepository implements IUserRepository {
     if (options?.role) {
       where.role = options.role as any;
     }
+    if (options?.search && options.search.trim() !== '') {
+      const q = options.search.trim();
+      where.OR = [
+        { username: { contains: q, mode: 'insensitive' } },
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ];
+    }
 
     const prisma = getPrismaClient();
-    const records = await prisma.user.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
-    return records.map((r) => this.toDomain(r));
+    const [records, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: options?.limit,
+        skip: options?.offset,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return {
+      users: records.map((r: any) => this.toDomain(r)),
+      total,
+    };
   }
 
   public async save(user: User): Promise<User> {
@@ -63,26 +83,57 @@ export class PrismaUserRepository implements IUserRepository {
     }
 
     const prisma = getPrismaClient();
-    const record = await prisma.user.create({ data });
-    return this.toDomain(record);
+    try {
+      const record = await prisma.user.create({ data });
+      return this.toDomain(record);
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        const target = Array.isArray(err.meta?.target) ? err.meta.target : [];
+        if (target.includes('username') || err.message?.includes('username')) {
+          throw new DuplicateResourceException('Tên đăng nhập', user.username);
+        }
+        if (target.includes('email') || err.message?.includes('email')) {
+          throw new DuplicateResourceException('Email', user.email);
+        }
+        throw new DuplicateResourceException('Tên đăng nhập hoặc email', `${user.username} / ${user.email}`);
+      }
+      throw err;
+    }
   }
 
   public async update(user: User): Promise<User> {
     if (!user.id) throw new Error('User ID is required for update');
     const prisma = getPrismaClient();
-    const record = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash: user.passwordHash,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role as any,
-        isActive: user.isActive,
-        mustChangePassword: user.mustChangePassword,
-        lastLoginAt: user.lastLoginAt,
-      },
-    });
-    return this.toDomain(record);
+    try {
+      const record = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: user.passwordHash,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role as any,
+          isActive: user.isActive,
+          mustChangePassword: user.mustChangePassword,
+          lastLoginAt: user.lastLoginAt,
+        },
+      });
+      return this.toDomain(record);
+    } catch (err: any) {
+      if (err.code === 'P2002') {
+        const target = Array.isArray(err.meta?.target) ? err.meta.target : [];
+        if (target.includes('email') || err.message?.includes('email')) {
+          throw new DuplicateResourceException('Email', user.email);
+        }
+        if (target.includes('username') || err.message?.includes('username')) {
+          throw new DuplicateResourceException('Tên đăng nhập', user.username);
+        }
+        throw new DuplicateResourceException('Tên đăng nhập hoặc email', `${user.username} / ${user.email}`);
+      }
+      if (err.code === 'P2025') {
+        throw new EntityNotFoundException('người dùng', user.id);
+      }
+      throw err;
+    }
   }
 
   public async delete(id: string): Promise<boolean> {

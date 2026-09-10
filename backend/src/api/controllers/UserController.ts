@@ -6,38 +6,27 @@ export class UserController {
   constructor(private readonly manageUserUseCase: ManageUserUseCase) {}
 
   public listUsers = async (req: Request, res: Response): Promise<void> => {
-    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
-    const isActive = req.query.isActive !== undefined ? req.query.isActive === 'true' : undefined;
-    const role = req.query.role as string | undefined;
-    const search = req.query.search as string | undefined;
+    const { page, limit, isActive, role, search } = req.query as any;
 
-    let users = await this.manageUserUseCase.list.execute({ isActive, role });
-
-    if (search) {
-      const q = search.toLowerCase();
-      users = users.filter(
-        (u) =>
-          u.username.toLowerCase().includes(q) ||
-          u.fullName.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q)
-      );
-    }
-
-    const total = users.length;
-    const startIndex = (page - 1) * limit;
-    const paginatedUsers = users.slice(startIndex, startIndex + limit);
+    const result = await this.manageUserUseCase.list.execute({
+      page,
+      limit,
+      isActive,
+      role,
+      search,
+    });
 
     res.status(200).json({
       success: true,
-      data: paginatedUsers,
-      meta: buildPaginationMeta(page, limit, total),
+      data: result.users,
+      meta: buildPaginationMeta(page ?? 1, limit ?? 20, result.total),
       timestamp: new Date().toISOString(),
     });
   };
 
   public createUser = async (req: Request, res: Response): Promise<void> => {
-    const user = await this.manageUserUseCase.create.execute(req.body);
+    const operatorUserId = req.user?.userId;
+    const user = await this.manageUserUseCase.create.execute(req.body, operatorUserId);
     res.status(201).json({
       success: true,
       data: user,
@@ -46,7 +35,7 @@ export class UserController {
   };
 
   public getUserById = async (req: Request, res: Response): Promise<void> => {
-    const user = await this.manageUserUseCase.getById(req.params.id);
+    const user = await this.manageUserUseCase.getUserById.execute(req.params.id);
     res.status(200).json({
       success: true,
       data: user,
@@ -55,7 +44,8 @@ export class UserController {
   };
 
   public updateUser = async (req: Request, res: Response): Promise<void> => {
-    const user = await this.manageUserUseCase.update.execute(req.params.id, req.body);
+    const operatorUserId = req.user?.userId;
+    const user = await this.manageUserUseCase.update.execute(req.params.id, req.body, operatorUserId);
     res.status(200).json({
       success: true,
       data: user,
@@ -64,7 +54,8 @@ export class UserController {
   };
 
   public updateStatus = async (req: Request, res: Response): Promise<void> => {
-    const user = await this.manageUserUseCase.setStatus(req.params.id, req.body.isActive);
+    const operatorUserId = req.user?.userId;
+    const user = await this.manageUserUseCase.setStatus(req.params.id, req.body.isActive, operatorUserId);
     res.status(200).json({
       success: true,
       data: {
@@ -75,11 +66,13 @@ export class UserController {
     });
   };
 
-  public toggleActive = async (req: Request, res: Response): Promise<void> => {
-    const user = await this.manageUserUseCase.toggleActive(req.params.id);
+  public resetPassword = async (req: Request, res: Response): Promise<void> => {
+    const operatorUserId = req.user?.userId;
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+    const result = await this.manageUserUseCase.resetPassword.execute(req.params.id, req.body, operatorUserId, ipAddress);
     res.status(200).json({
       success: true,
-      data: user,
+      data: result,
       timestamp: new Date().toISOString(),
     });
   };
