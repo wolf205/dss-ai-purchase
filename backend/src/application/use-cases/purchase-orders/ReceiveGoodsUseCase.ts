@@ -76,7 +76,9 @@ export class ReceiveGoodsUseCase {
         
         // Increase On-Hand (Atomically add what was accepted)
         if (item.acceptedQuantity > 0) {
-          await this.inventoryRepo.updateOnHand(item.productSku.toString(), item.acceptedQuantity);
+          const currentInv = await this.inventoryRepo.findByProductSku(item.productSku.toString());
+          const currentOnHand = currentInv ? currentInv.onHand : 0;
+          await this.inventoryRepo.updateOnHand(item.productSku.toString(), currentOnHand + item.acceptedQuantity);
         }
       }
 

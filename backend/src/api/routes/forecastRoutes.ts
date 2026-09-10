@@ -8,6 +8,7 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get('/', catchAsync(forecastController.getForecasts));
+router.post('/generate', catchAsync(forecastController.generateForecasts));
 router.post('/cold-start', catchAsync(forecastController.saveColdStart));
 router.get('/:sku', catchAsync(forecastController.getSkuForecast));
 

@@ -11,6 +11,9 @@ import { errorMiddleware } from './middlewares/errorMiddleware';
 export function createApp(): Express {
   const app = express();
 
+  // Trust first proxy (Docker bridge / Nginx) to accurately resolve client IP in rate limiters
+  app.set('trust proxy', 1);
+
   // 1. Security and parsing middlewares
   app.use(helmet());
   app.use(

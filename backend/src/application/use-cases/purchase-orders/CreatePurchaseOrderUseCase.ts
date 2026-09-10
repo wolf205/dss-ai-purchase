@@ -66,8 +66,11 @@ export class CreatePurchaseOrderUseCase {
       // 5. Save to database
       await this.purchaseOrderRepo.save(purchaseOrder);
 
+      // Fetch saved entity with assigned autoincrement ID
+      const savedOrder = await this.purchaseOrderRepo.findByCode(poCode.toString());
+
       // 6. Map to DTO
-      return this.mapToResponseDto(purchaseOrder);
+      return this.mapToResponseDto(savedOrder || purchaseOrder);
     });
   }
 

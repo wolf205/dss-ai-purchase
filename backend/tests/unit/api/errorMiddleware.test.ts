@@ -12,6 +12,7 @@ import {
   DuplicateResourceException,
   UnauthorizedException,
   ForbiddenException,
+  TooManyRequestsException,
 } from '../../../src/application/exceptions';
 
 describe('errorMiddleware', () => {
@@ -112,6 +113,25 @@ describe('errorMiddleware', () => {
     );
   });
 
+  it('should map TooManyRequestsException to 429 TOO_MANY_REQUESTS', () => {
+    const err = new TooManyRequestsException(
+      'Bạn đã nhập sai mật khẩu quá 5 lần liên tiếp. Vui lòng thử lại sau 15 phút.',
+      'TOO_MANY_REQUESTS'
+    );
+    errorMiddleware(err, mockReq as Request, mockRes as Response, mockNext);
+
+    expect(statusMock).toHaveBeenCalledWith(429);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Bạn đã nhập sai mật khẩu quá 5 lần liên tiếp. Vui lòng thử lại sau 15 phút.',
+        }),
+      })
+    );
+  });
+
   it('should map InvalidWeightDistributionException to 422 WEIGHT_SUM_INVALID', () => {
     const err = new InvalidWeightDistributionException();
     errorMiddleware(err, mockReq as Request, mockRes as Response, mockNext);
@@ -194,6 +214,68 @@ describe('errorMiddleware', () => {
         error: expect.objectContaining({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Đã xảy ra lỗi hệ thống không mong muốn',
+        }),
+      })
+    );
+  });
+
+  it('should map Multer LIMIT_FILE_SIZE error to 400 FILE_TOO_LARGE', () => {
+    const multer = require('multer');
+    const err = new multer.MulterError('LIMIT_FILE_SIZE');
+    errorMiddleware(err, mockReq as Request, mockRes as Response, mockNext);
+
+    expect(statusMock).toHaveBeenCalledWith(400);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: 'FILE_TOO_LARGE',
+          message: 'Dung lượng tệp tin vượt quá giới hạn tối đa cho phép (10MB)',
+        }),
+      })
+    );
+  });
+
+  it('should map unsupported file format error to 400 INVALID_FILE_FORMAT', () => {
+    const err = new Error('Định dạng file không hỗ trợ. Chỉ chấp nhận file Excel (.xlsx, .xls) hoặc CSV (.csv)');
+    errorMiddleware(err, mockReq as Request, mockRes as Response, mockNext);
+
+    expect(statusMock).toHaveBeenCalledWith(400);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: 'INVALID_FILE_FORMAT',
+          message: expect.stringContaining('Định dạng file không hỗ trợ'),
+        }),
+      })
+    );
+  });
+
+  it('should delegate to next(err) without sending response if res.headersSent is true', () => {
+    mockRes.headersSent = true;
+    const err = new Error('Some error after headers sent');
+    errorMiddleware(err, mockReq as Request, mockRes as Response, mockNext);
+
+    expect(mockNext).toHaveBeenCalledWith(err);
+    expect(statusMock).not.toHaveBeenCalled();
+    expect(jsonMock).not.toHaveBeenCalled();
+  });
+
+  it('should map body-parser JSON SyntaxError to 400 INVALID_JSON_BODY', () => {
+    const syntaxErr: any = new SyntaxError('Unexpected token } in JSON at position 12');
+    syntaxErr.body = '{"bad": }';
+    syntaxErr.status = 400;
+
+    errorMiddleware(syntaxErr, mockReq as Request, mockRes as Response, mockNext);
+
+    expect(statusMock).toHaveBeenCalledWith(400);
+    expect(jsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({
+          code: 'INVALID_JSON_BODY',
+          message: 'Cú pháp dữ liệu JSON gửi lên không hợp lệ',
         }),
       })
     );

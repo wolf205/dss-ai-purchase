@@ -12,9 +12,11 @@ export interface ForecastRequestPayload {
 
 export interface ForecastPointDTO {
   date: string;         // YYYY-MM-DD
-  predicted: number;    // Lượng bán dự báo làm tròn số nguyên (>= 0)
-  lowerBound: number;   // Cận dưới dải tin cậy: max(0, ceil(predicted - 1.65 * MAE))
-  upperBound: number;   // Cận trên dải tin cậy: ceil(predicted + 1.65 * MAE)
+  actual?: number;      // Lượng bán thực tế trong quá khứ (nếu có)
+  forecast?: number;    // Lượng bán dự báo tương lai
+  predicted?: number;   // Lượng bán dự báo tương lai (giữ tương thích)
+  lowerBound?: number;  // Cận dưới dải tin cậy: max(0, ceil(predicted - 1.65 * MAE))
+  upperBound?: number;  // Cận trên dải tin cậy: ceil(predicted + 1.65 * MAE)
 }
 
 export interface ForecastResponsePayload {

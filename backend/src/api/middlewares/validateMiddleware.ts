@@ -1,80 +1,36 @@
 import { Request, Response, NextFunction } from 'express';
-import { ZodSchema, ZodError } from 'zod';
+import { ZodSchema } from 'zod';
 
 export const validateBody = (schema: ZodSchema) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     try {
       req.body = schema.parse(req.body);
-      next();
+      return next();
     } catch (error) {
-      if (error instanceof ZodError) {
-        res.status(400).json({
-          success: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Dữ liệu đầu vào không hợp lệ',
-            details: error.errors.map((e) => ({
-              field: e.path.join('.'),
-              message: e.message,
-            })),
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-      next(error);
+      return next(error);
     }
   };
 };
 
 export const validateQuery = (schema: ZodSchema) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     try {
       req.query = schema.parse(req.query);
-      next();
+      return next();
     } catch (error) {
-      if (error instanceof ZodError) {
-        res.status(400).json({
-          success: false,
-          error: {
-            code: 'QUERY_PARAMS_INVALID',
-            message: 'Tham số truy vấn không hợp lệ',
-            details: error.errors.map((e) => ({
-              field: e.path.join('.'),
-              message: e.message,
-            })),
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-      next(error);
+      return next(error);
     }
   };
 };
 
 export const validateParams = (schema: ZodSchema) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     try {
       req.params = schema.parse(req.params);
-      next();
+      return next();
     } catch (error) {
-      if (error instanceof ZodError) {
-        res.status(400).json({
-          success: false,
-          error: {
-            code: 'PATH_PARAMS_INVALID',
-            message: 'Tham số đường dẫn không hợp lệ',
-            details: error.errors.map((e) => ({
-              field: e.path.join('.'),
-              message: e.message,
-            })),
-          },
-          timestamp: new Date().toISOString(),
-        });
-        return;
-      }
-      next(error);
+      return next(error);
     }
   };
 };
+

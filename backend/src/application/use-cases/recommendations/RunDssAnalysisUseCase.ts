@@ -119,7 +119,7 @@ export class RunDssAnalysisUseCase {
 
     for (const p of products) {
       const skuStr = p.sku.value;
-      const salesAggregates = await this.salesHistoryRepository.getDailyAggregates(skuStr, 30);
+      const salesAggregates = await this.salesHistoryRepository.getDailyAggregates(skuStr, 90);
       const salesHistoryFormatted = salesAggregates.map((s) => ({
         date: s.date instanceof Date ? s.date.toISOString().split('T')[0] : String(s.date),
         quantity: s.quantity,
@@ -137,9 +137,21 @@ export class RunDssAnalysisUseCase {
           expectedDailySales: coldStart?.expectedDailySales || null,
         });
 
+        const domainAiResponse: any = aiResponse
+          ? {
+              ...aiResponse,
+              points: aiResponse.points.map((p) => ({
+                date: p.date,
+                predicted: p.predicted ?? p.forecast ?? 0,
+                lowerBound: p.lowerBound ?? 0,
+                upperBound: p.upperBound ?? 0,
+              })),
+            }
+          : null;
+
         // Kiểm tra Fallback SMA-7 nếu WAPE > 40%
         forecastResult = DemandForecastingService.evaluateAndFallback(
-          aiResponse,
+          domainAiResponse,
           skuStr,
           horizonDays,
           salesHistoryFormatted

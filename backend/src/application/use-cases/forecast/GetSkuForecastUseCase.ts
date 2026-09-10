@@ -1,12 +1,14 @@
 import { IDemandForecastRepository } from '../../../domain/repositories/IDemandForecastRepository';
 import { IProductRepository } from '../../../domain/repositories/IProductRepository';
+import { ISalesHistoryRepository } from '../../../domain/repositories/ISalesHistoryRepository';
 import { EntityNotFoundException } from '../../exceptions';
-import { ForecastResponsePayload } from '../../dtos/ForecastDTO';
+import { ForecastResponsePayload, ForecastPointDTO } from '../../dtos/ForecastDTO';
 
 export class GetSkuForecastUseCase {
   constructor(
     private readonly demandForecastRepository: IDemandForecastRepository,
-    private readonly productRepository: IProductRepository
+    private readonly productRepository: IProductRepository,
+    private readonly salesHistoryRepository: ISalesHistoryRepository
   ) {}
 
   public async execute(sku: string, horizonDays: number = 14): Promise<ForecastResponsePayload> {
@@ -17,10 +19,38 @@ export class GetSkuForecastUseCase {
       throw new EntityNotFoundException('sản phẩm', cleanSku);
     }
 
-    const forecast = await this.demandForecastRepository.findLatestBySku(cleanSku, horizonDays);
+    const [forecast, salesHistory] = await Promise.all([
+      this.demandForecastRepository.findLatestBySku(cleanSku, horizonDays),
+      this.salesHistoryRepository.getDailyAggregates(cleanSku, 14),
+    ]);
+
+    const points: ForecastPointDTO[] = [];
+
+    // 1. Thêm 14 ngày bán thực tế trong quá khứ
+    if (salesHistory && salesHistory.length > 0) {
+      for (const item of salesHistory) {
+        points.push({
+          date: item.date instanceof Date ? item.date.toISOString().split('T')[0] : String(item.date),
+          actual: item.quantity,
+        });
+      }
+    }
+
+    // 2. Thêm các ngày dự báo trong tương lai
+    if (forecast && forecast.forecastPoints && Array.isArray(forecast.forecastPoints)) {
+      for (const fp of forecast.forecastPoints) {
+        const pred = fp.predicted ?? fp.forecast ?? 0;
+        points.push({
+          date: fp.date,
+          forecast: pred,
+          predicted: pred,
+          lowerBound: fp.lowerBound,
+          upperBound: fp.upperBound,
+        });
+      }
+    }
 
     if (!forecast) {
-      // Fallback empty points if forecast has not been generated yet
       return {
         sku: cleanSku,
         horizonDays,
@@ -30,7 +60,7 @@ export class GetSkuForecastUseCase {
         mae: null,
         algorithmUsed: 'BASIC_SMA7',
         isFallback: true,
-        points: [],
+        points,
       };
     }
 
@@ -43,7 +73,8 @@ export class GetSkuForecastUseCase {
       mae: forecast.mae,
       algorithmUsed: forecast.algorithmUsed as any,
       isFallback: forecast.isFallback,
-      points: Array.isArray(forecast.forecastPoints) ? forecast.forecastPoints : [],
+      points,
     };
   }
 }
+

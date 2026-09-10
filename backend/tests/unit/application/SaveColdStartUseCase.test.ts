@@ -25,6 +25,7 @@ describe('SaveColdStartUseCase', () => {
       save: jest.fn(),
       update: jest.fn(),
       exists: jest.fn(),
+      findBySkus: jest.fn(),
     };
     mockInventoryRepo = {
       findByProductSku: jest.fn(),

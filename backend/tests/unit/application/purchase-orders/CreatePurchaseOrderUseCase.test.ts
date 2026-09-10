@@ -16,6 +16,7 @@ describe('CreatePurchaseOrderUseCase', () => {
   beforeEach(() => {
     mockPoRepo = {
       findById: jest.fn(),
+      findByCode: jest.fn(),
       save: jest.fn(),
       countPOsInDate: jest.fn(),
       search: jest.fn(),

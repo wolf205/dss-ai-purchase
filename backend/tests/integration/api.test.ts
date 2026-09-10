@@ -48,4 +48,41 @@ describe('Express API Integration Tests', () => {
       expect(res.body.error.code).toBe('UNAUTHORIZED');
     });
   });
+
+  describe('PUT & PATCH /api/v1/suppliers/:id', () => {
+    it('should return 401 UNAUTHORIZED when calling PUT without Bearer token', async () => {
+      const res = await request(app).put('/api/v1/suppliers/1').send({ name: 'Vinamilk' });
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('should return 401 UNAUTHORIZED when calling PATCH without Bearer token', async () => {
+      const res = await request(app).patch('/api/v1/suppliers/1').send({ name: 'Vinamilk' });
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+  });
+
+  describe('POST /api/v1/suppliers/:id/products', () => {
+    it('should return 401 UNAUTHORIZED when calling POST without Bearer token', async () => {
+      const res = await request(app)
+        .post('/api/v1/suppliers/1/products')
+        .send({ productSku: 'MILK-VNM-180', purchasePrice: 6200 });
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+  });
+
+  describe('GET /api/v1/suppliers/:id/deliveries', () => {
+    it('should return 401 UNAUTHORIZED when calling GET without Bearer token', async () => {
+      const res = await request(app).get('/api/v1/suppliers/1/deliveries');
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+  });
 });
+

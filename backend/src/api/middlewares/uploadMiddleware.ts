@@ -22,7 +22,9 @@ const fileFilter = (
   if (allowedMimes.includes(file.mimetype) || isAllowedExt) {
     cb(null, true);
   } else {
-    cb(new Error('Định dạng file không hỗ trợ. Chỉ chấp nhận file Excel (.xlsx, .xls) hoặc CSV (.csv)'));
+    const error: any = new Error('Định dạng file không hỗ trợ. Chỉ chấp nhận file Excel (.xlsx, .xls) hoặc CSV (.csv)');
+    error.code = 'INVALID_FILE_FORMAT';
+    cb(error);
   }
 };
 

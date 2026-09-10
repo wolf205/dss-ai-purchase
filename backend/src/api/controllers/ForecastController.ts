@@ -2,12 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import { GetForecastsUseCase } from '../../application/use-cases/forecast/GetForecastsUseCase';
 import { GetSkuForecastUseCase } from '../../application/use-cases/forecast/GetSkuForecastUseCase';
 import { SaveColdStartUseCase } from '../../application/use-cases/forecast/SaveColdStartUseCase';
+import { GenerateForecastsUseCase } from '../../application/use-cases/forecast/GenerateForecastsUseCase';
 
 export class ForecastController {
   constructor(
     private readonly getForecastsUseCase: GetForecastsUseCase,
     private readonly getSkuForecastUseCase: GetSkuForecastUseCase,
-    private readonly saveColdStartUseCase: SaveColdStartUseCase
+    private readonly saveColdStartUseCase: SaveColdStartUseCase,
+    private readonly generateForecastsUseCase?: GenerateForecastsUseCase
   ) {}
 
   public getForecasts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -57,4 +59,19 @@ export class ForecastController {
       next(error);
     }
   };
+
+  public generateForecasts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const horizonDays = req.body?.horizonDays ? parseInt(req.body.horizonDays as string, 10) : undefined;
+      const result = await this.generateForecastsUseCase?.execute({ horizonDays });
+      res.status(200).json({
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
+
