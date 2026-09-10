@@ -94,13 +94,20 @@ export class Inventory {
     return this._updatedAt;
   }
 
-  public updateOnHand(newOnHand: number): void {
+  public updateOnHand(newOnHand: number, stocktakeDate?: Date): void {
     if (newOnHand < 0) {
       throw new DomainException('Số lượng tồn kho thực tế (On-Hand) không được là số âm', 'BUSINESS_RULE_VIOLATION');
     }
     this._onHand = Math.floor(newOnHand);
+    if (stocktakeDate) {
+      this._lastStocktakeDate = stocktakeDate;
+    }
     this.reevaluateRiskLevel();
     this._updatedAt = new Date();
+  }
+
+  public recordStocktake(newOnHand: number, stocktakeDate: Date = new Date()): void {
+    this.updateOnHand(newOnHand, stocktakeDate);
   }
 
   public incrementOnHand(qty: number): void {

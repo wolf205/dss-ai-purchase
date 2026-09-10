@@ -51,4 +51,27 @@ describe('ExcelFileParser (UC-003, BR-009, BR-010)', () => {
     expect(errorFields).toContain('sku');
     expect(errorFields).toContain('sale_date');
   });
+
+  it('should return error if file buffer is corrupted', async () => {
+    const corruptBuffer = Buffer.from('this is not an excel file');
+    const result = await parser.parseSalesAndInventoryFile(corruptBuffer, 'corrupt.xlsx');
+
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].field).toBe('file');
+    expect(result.errors[0].message).toContain('bị hỏng hoặc không đúng định dạng');
+  });
+
+  it('should return error if required headers are missing in sales sheet', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('SalesHistory');
+    sheet.addRow(['employee_name', 'phone_number']);
+    sheet.addRow(['Nguyen Van A', '0901234567']);
+
+    const buffer = (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
+    const result = await parser.parseSalesAndInventoryFile(buffer, 'unrelated.xlsx', 'SALES_HISTORY');
+
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].field).toBe('header');
+    expect(result.errors[0].message).toContain('thiếu các cột bắt buộc');
+  });
 });

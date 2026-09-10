@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
 import { ImportSalesInventoryUseCase } from '../../application/use-cases/ingestion/ImportSalesInventoryUseCase';
 import { GetDataImportLogsUseCase } from '../../application/use-cases/ingestion/GetDataImportLogsUseCase';
+import { GetImportTemplateUseCase } from '../../application/use-cases/ingestion/GetImportTemplateUseCase';
 import { buildPaginationMeta } from '../utils/pagination';
 
 export class DataImportController {
   constructor(
     private readonly importSalesInventoryUseCase: ImportSalesInventoryUseCase,
-    private readonly getDataImportLogsUseCase: GetDataImportLogsUseCase
+    private readonly getDataImportLogsUseCase: GetDataImportLogsUseCase,
+    private readonly getImportTemplateUseCase?: GetImportTemplateUseCase
   ) {}
 
   public uploadSalesAndInventory = async (req: Request, res: Response): Promise<void> => {
@@ -22,7 +24,7 @@ export class DataImportController {
       return;
     }
 
-    const uploadedBy = req.user?.userId || '00000000-0000-0000-0000-000000000000';
+    const uploadedBy = req.user?.userId;
     const type = (req.body.type || req.body.importType) as 'SALES_HISTORY' | 'INVENTORY_SNAPSHOT' | undefined;
     const overwriteDuplicateDates = req.body.overwriteDuplicateDates === 'false' || req.body.overwriteDuplicateDates === false ? false : true;
 
@@ -86,6 +88,30 @@ export class DataImportController {
       data: log,
       timestamp: new Date().toISOString(),
     });
+  };
+
+  public getTemplate = async (req: Request, res: Response): Promise<void> => {
+    if (!this.getImportTemplateUseCase) {
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Dịch vụ sinh tệp tin mẫu chưa được cấu hình',
+        },
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const type = req.params.type;
+    const format = (req.query.format as 'xlsx' | 'csv') || 'xlsx';
+
+    const result = await this.getImportTemplateUseCase.execute({ type, format });
+
+    res.setHeader('Content-Type', result.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(result.filename)}"`);
+    res.setHeader('Content-Length', result.buffer.length);
+    res.status(200).send(result.buffer);
   };
 }
 

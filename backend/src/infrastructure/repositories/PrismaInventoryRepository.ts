@@ -132,7 +132,6 @@ export class PrismaInventoryRepository implements IInventoryRepository {
         productSku: inventory.productSku,
         onHand: inventory.onHand,
         onOrder: inventory.onOrder,
-        calculatedIp: inventory.calculatedIp,
         safetyStock: inventory.safetyStock,
         reorderPoint: inventory.reorderPoint,
         maxStock: inventory.maxStock,
@@ -144,7 +143,6 @@ export class PrismaInventoryRepository implements IInventoryRepository {
       update: {
         onHand: inventory.onHand,
         onOrder: inventory.onOrder,
-        calculatedIp: inventory.calculatedIp,
         safetyStock: inventory.safetyStock,
         reorderPoint: inventory.reorderPoint,
         maxStock: inventory.maxStock,
@@ -164,7 +162,6 @@ export class PrismaInventoryRepository implements IInventoryRepository {
       data: {
         onHand: inventory.onHand,
         onOrder: inventory.onOrder,
-        calculatedIp: inventory.calculatedIp,
         safetyStock: inventory.safetyStock,
         reorderPoint: inventory.reorderPoint,
         maxStock: inventory.maxStock,
@@ -177,13 +174,13 @@ export class PrismaInventoryRepository implements IInventoryRepository {
     return this.toDomain(record);
   }
 
-  public async updateOnHand(productSku: string, newOnHand: number): Promise<Inventory> {
+  public async updateOnHand(productSku: string, newOnHand: number, stocktakeDate?: Date): Promise<Inventory> {
     const current = await this.findByProductSku(productSku);
     if (!current) {
-      const inv = new Inventory({ productSku, onHand: newOnHand });
+      const inv = new Inventory({ productSku, onHand: newOnHand, lastStocktakeDate: stocktakeDate });
       return await this.save(inv);
     }
-    current.updateOnHand(newOnHand);
+    current.updateOnHand(newOnHand, stocktakeDate);
     return await this.update(current);
   }
 
@@ -193,7 +190,6 @@ export class PrismaInventoryRepository implements IInventoryRepository {
       where: { productSku: productSku.trim().toUpperCase() },
       data: {
         onOrder: { increment: delta },
-        calculatedIp: { increment: delta },
       },
     });
     return this.toDomain(record);

@@ -34,7 +34,7 @@ export interface IInventoryRepository {
   getKpiSummary(): Promise<InventoryKpiSummary>;
   save(inventory: Inventory): Promise<Inventory>;
   update(inventory: Inventory): Promise<Inventory>;
-  updateOnHand(productSku: string, newOnHand: number): Promise<Inventory>;
+  updateOnHand(productSku: string, newOnHand: number, stocktakeDate?: Date): Promise<Inventory>;
   updateOnOrder(productSku: string, delta: number): Promise<Inventory>;
   batchUpdateDss(
     items: Array<{

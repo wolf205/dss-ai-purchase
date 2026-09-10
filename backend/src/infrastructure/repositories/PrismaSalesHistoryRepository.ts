@@ -43,22 +43,28 @@ export class PrismaSalesHistoryRepository implements ISalesHistoryRepository {
     const prisma = getPrismaClient();
 
     if (overwriteDuplicateDates) {
-      for (const item of data) {
-        await prisma.salesHistory.upsert({
-          where: {
-            productSku_saleDate: {
-              productSku: item.productSku,
-              saleDate: item.saleDate,
-            },
-          },
-          create: item,
-          update: {
-            quantitySold: item.quantitySold,
-            revenue: item.revenue,
-            source: item.source,
-            importBatchId: item.importBatchId,
-          },
-        });
+      const CHUNK_SIZE = 50;
+      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+        const chunk = data.slice(i, i + CHUNK_SIZE);
+        await Promise.all(
+          chunk.map((item) =>
+            prisma.salesHistory.upsert({
+              where: {
+                productSku_saleDate: {
+                  productSku: item.productSku,
+                  saleDate: item.saleDate,
+                },
+              },
+              create: item,
+              update: {
+                quantitySold: item.quantitySold,
+                revenue: item.revenue,
+                source: item.source,
+                importBatchId: item.importBatchId,
+              },
+            })
+          )
+        );
       }
       return data.length;
     }
@@ -75,18 +81,16 @@ export class PrismaSalesHistoryRepository implements ISalesHistoryRepository {
     productSku: string,
     daysCount: number
   ): Promise<{ date: Date; quantity: number }[]> {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - daysCount);
-    startDate.setHours(0, 0, 0, 0);
-
     const prisma = getPrismaClient();
     const records = await prisma.salesHistory.findMany({
       where: {
         productSku: productSku.trim().toUpperCase(),
-        saleDate: { gte: startDate },
       },
-      orderBy: { saleDate: 'asc' },
+      orderBy: { saleDate: 'desc' },
+      take: daysCount,
     });
+
+    records.reverse();
 
     return records.map((r) => ({
       date: r.saleDate,

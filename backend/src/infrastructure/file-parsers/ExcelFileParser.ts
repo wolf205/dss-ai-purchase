@@ -19,10 +19,19 @@ export class ExcelFileParser implements IFileParser {
     const errors: FileParseError[] = [];
 
     const isCsv = originalFilename.toLowerCase().endsWith('.csv');
-    if (isCsv) {
-      await workbook.csv.read(buffer as any);
-    } else {
-      await workbook.xlsx.load(buffer as any);
+    try {
+      if (isCsv) {
+        await workbook.csv.read(buffer as any);
+      } else {
+        await workbook.xlsx.load(buffer as any);
+      }
+    } catch (err: any) {
+      errors.push({
+        rowNumber: 1,
+        field: 'file',
+        message: 'Tệp tin Excel/CSV bị hỏng hoặc không đúng định dạng chuẩn.',
+      });
+      return { salesRows, inventoryRows, errors };
     }
 
     const today = new Date();
@@ -128,14 +137,22 @@ export class ExcelFileParser implements IFileParser {
       headerMap.get('productsku') ||
       headerMap.get('masku') ||
       headerMap.get('masanpham') ||
-      headerMap.get('mahang') ||
-      1;
+      headerMap.get('mahang');
     const dateCol =
       headerMap.get('saledate') ||
       headerMap.get('date') ||
       headerMap.get('ngayban') ||
-      headerMap.get('ngay') ||
-      2;
+      headerMap.get('ngay');
+
+    if (!skuCol || !dateCol) {
+      errors.push({
+        rowNumber: 1,
+        field: 'header',
+        message: 'Bảng tính thiếu các cột bắt buộc: "Mã SKU" (SKU) hoặc "Ngày bán" (Date / SaleDate) tại hàng tiêu đề.',
+      });
+      return;
+    }
+
     const qtyCol =
       headerMap.get('quantitysold') ||
       headerMap.get('quantity') ||
@@ -232,15 +249,22 @@ export class ExcelFileParser implements IFileParser {
       headerMap.get('productsku') ||
       headerMap.get('masku') ||
       headerMap.get('masanpham') ||
-      headerMap.get('mahang') ||
-      1;
+      headerMap.get('mahang');
     const onHandCol =
       headerMap.get('onhand') ||
       headerMap.get('quantity') ||
       headerMap.get('tonkho') ||
       headerMap.get('tonkhothucte') ||
-      headerMap.get('soluongton') ||
-      2;
+      headerMap.get('soluongton');
+
+    if (!skuCol || !onHandCol) {
+      errors.push({
+        rowNumber: 1,
+        field: 'header',
+        message: 'Bảng tính thiếu các cột bắt buộc: "Mã SKU" (SKU) hoặc "Tồn kho thực tế" (OnHand / TonKho) tại hàng tiêu đề.',
+      });
+      return;
+    }
 
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // Skip header

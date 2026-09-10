@@ -5,6 +5,7 @@ import { ISalesHistoryRepository } from '../../../src/domain/repositories/ISales
 import { IInventoryRepository } from '../../../src/domain/repositories/IInventoryRepository';
 import { IDataImportLogRepository } from '../../../src/domain/repositories/IDataImportLogRepository';
 import { IUnitOfWork } from '../../../src/application/ports/IUnitOfWork';
+import { Product } from '../../../src/domain/entities/Product';
 
 describe('ImportSalesInventoryUseCase (UC-003, BR-009, BR-010, BR-018)', () => {
   let mockFileParser: jest.Mocked<IFileParser>;
@@ -26,6 +27,7 @@ describe('ImportSalesInventoryUseCase (UC-003, BR-009, BR-010, BR-018)', () => {
       save: jest.fn(),
       update: jest.fn(),
       exists: jest.fn(),
+      findBySkus: jest.fn(),
     };
     mockSalesRepo = {
       findByProductSku: jest.fn(),
@@ -100,10 +102,11 @@ describe('ImportSalesInventoryUseCase (UC-003, BR-009, BR-010, BR-018)', () => {
       errors: [],
     });
 
-    mockProductRepo.exists.mockResolvedValue(false);
+    mockProductRepo.findBySkus.mockResolvedValue([]);
 
     const result = await useCase.execute(Buffer.from('mock'), 'sales.xlsx', 'user-123');
 
+    expect(mockProductRepo.findBySkus).toHaveBeenCalledWith(['NON-EXISTING-SKU']);
     expect(result.status).toBe('FAILED');
     expect(result.errors.some((e) => e.message.includes('chưa tồn tại'))).toBe(true);
     expect(mockSalesRepo.saveBatch).not.toHaveBeenCalled();
@@ -130,15 +133,26 @@ describe('ImportSalesInventoryUseCase (UC-003, BR-009, BR-010, BR-018)', () => {
       errors: [],
     });
 
-    mockProductRepo.exists.mockResolvedValue(true);
+    const validProduct = new Product({
+      sku: 'VALID-SKU',
+      name: 'Valid Product',
+      category: 'General',
+      unit: 'Cái',
+      costPrice: 10000,
+      sellingPrice: 15000,
+      defaultLeadTime: 2,
+      minSafetyStock: 10,
+    });
+    mockProductRepo.findBySkus.mockResolvedValue([validProduct]);
 
     const result = await useCase.execute(Buffer.from('mock'), 'sales.xlsx', 'user-123');
 
+    expect(mockProductRepo.findBySkus).toHaveBeenCalledWith(['VALID-SKU']);
     expect(result.status).toBe('SUCCESS');
     expect(result.salesRowsImported).toBe(1);
     expect(result.inventoryRowsUpdated).toBe(1);
     expect(mockUnitOfWork.executeInTransaction).toHaveBeenCalled();
     expect(mockSalesRepo.saveBatch).toHaveBeenCalled();
-    expect(mockInvRepo.updateOnHand).toHaveBeenCalledWith('VALID-SKU', 100);
+    expect(mockInvRepo.updateOnHand).toHaveBeenCalledWith('VALID-SKU', 100, expect.any(Date));
   });
 });

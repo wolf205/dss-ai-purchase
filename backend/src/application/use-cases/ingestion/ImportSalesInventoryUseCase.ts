@@ -21,7 +21,7 @@ export class ImportSalesInventoryUseCase {
   public async execute(
     buffer: Buffer,
     originalFilename: string,
-    uploadedBy: string,
+    uploadedBy?: string,
     requestedImportType?: 'SALES_HISTORY' | 'INVENTORY_SNAPSHOT',
     overwriteDuplicateDates: boolean = true
   ): Promise<ImportDataResponseDTO> {
@@ -37,7 +37,7 @@ export class ImportSalesInventoryUseCase {
     const finalImportType: 'SALES_HISTORY' | 'INVENTORY_SNAPSHOT' =
       requestedImportType || (parseResult.inventoryRows.length > 0 ? 'INVENTORY_SNAPSHOT' : 'SALES_HISTORY');
 
-    // 2. Validate SKU existence for all rows & fetch basePrice for fallback
+    // 2. Validate SKU existence for all rows & fetch basePrice for fallback (NFR-003)
     const uniqueSkus = new Set<string>();
     parseResult.salesRows.forEach((r) => uniqueSkus.add(r.sku));
     parseResult.inventoryRows.forEach((r) => uniqueSkus.add(r.sku));
@@ -45,18 +45,13 @@ export class ImportSalesInventoryUseCase {
     const skuExistenceMap = new Map<string, boolean>();
     const productPriceMap = new Map<string, number>();
 
-    await Promise.all(
-      Array.from(uniqueSkus).map(async (sku) => {
-        const exists = await this.productRepository.exists(sku);
-        skuExistenceMap.set(sku, exists);
-        if (exists) {
-          const product = await this.productRepository.findBySku(sku);
-          if (product) {
-            productPriceMap.set(sku, product.sellingPrice);
-          }
-        }
-      })
-    );
+    if (uniqueSkus.size > 0) {
+      const foundProducts = await this.productRepository.findBySkus(Array.from(uniqueSkus));
+      for (const product of foundProducts) {
+        skuExistenceMap.set(product.sku.value, true);
+        productPriceMap.set(product.sku.value, product.sellingPrice);
+      }
+    }
 
     // Check sales rows SKUs
     for (const row of parseResult.salesRows) {
@@ -148,10 +143,11 @@ export class ImportSalesInventoryUseCase {
         await this.salesHistoryRepository.saveBatch(salesEntities, overwriteDuplicateDates);
       }
 
-      // 4c. Update Inventory On-Hand records
+      // 4c. Update Inventory On-Hand records with stocktake timestamp (UC-003, BR-001)
       if (parseResult.inventoryRows.length > 0) {
+        const stocktakeDate = new Date();
         for (const row of parseResult.inventoryRows) {
-          await this.inventoryRepository.updateOnHand(row.sku, row.onHand);
+          await this.inventoryRepository.updateOnHand(row.sku, row.onHand, stocktakeDate);
         }
       }
 
