@@ -158,9 +158,9 @@
 
 ---
 
-## 5. Danh Mục Tổng Hợp 32 Endpoints Hệ Thống (API Endpoints Catalog)
+## 5. Danh Mục Tổng Hợp 47 Endpoints Hệ Thống (API Endpoints Catalog)
 
-Dưới đây là danh mục toàn bộ **32 endpoints** được chuẩn hóa, phân theo 7 phân vùng nghiệp vụ:
+Dưới đây là danh mục toàn bộ **47 endpoints** được chuẩn hóa, phân theo 7 phân vùng nghiệp vụ:
 
 | STT | Phương Thức | Đường Dẫn Endpoint | Phân Quyền | Tên Chức Năng Nghiệp Vụ | Use Case Ánh Xạ |
 | :---: | :---: | :--- | :---: | :--- | :---: |
@@ -183,35 +183,41 @@ Dưới đây là danh mục toàn bộ **32 endpoints** được chuẩn hóa, 
 | **15**| `PATCH`| `/api/v1/products/:sku/status` | `ADMIN` | Kích hoạt / Vô hiệu hóa sản phẩm (`is_active`)| `UC-001` |
 | **16**| `POST` | `/api/v1/data-import/upload` | Auth | Tải lên file Excel/CSV bán hàng & kiểm kê | `UC-003` |
 | **17**| `GET` | `/api/v1/data-import/history` | Auth | Lịch sử các phiên nạp dữ liệu từ file | `UC-003` |
-| **18**| `POST` | `/api/v1/sales-history/manual` | Auth | Nhập thủ công số lượng bán theo ngày | `UC-003` |
+| **18**| `GET` | `/api/v1/data-import/templates/:type` | Auth | Tải tệp tin Excel/CSV mẫu chuẩn | `UC-003` |
+| **19**| `POST` | `/api/v1/sales-history/manual` | Auth | Nhập thủ công số lượng bán theo ngày | `UC-003` |
 | **NHÓM 3: DANH MỤC NHÀ CUNG CẤP & ĐÁNH GIÁ (SUPPLIERS & EVALUATION)** | | | | | |
-| **19**| `GET` | `/api/v1/suppliers` | Auth | Danh sách nhà cung cấp & điểm tổng hợp | `UC-002`, `UC-009` |
-| **20**| `POST` | `/api/v1/suppliers` | `ADMIN` | Thêm mới nhà cung cấp | `UC-002` |
-| **21**| `GET` | `/api/v1/suppliers/:id` | Auth | Xem chi tiết thông tin và bảng giá NCC | `UC-002` |
-| **22**| `PUT` | `/api/v1/suppliers/:id` | `ADMIN` | Cập nhật thông tin liên hệ nhà cung cấp | `UC-002` |
-| **23**| `POST` | `/api/v1/suppliers/:id/products` | `ADMIN` | Gán sản phẩm phân phối (Đơn giá, MOQ, Pack) | `UC-002` |
-| **24**| `GET` | `/api/v1/suppliers/evaluations` | Auth | Bảng xếp hạng & chi tiết 4 điểm thành phần | `UC-009` |
-| **25**| `GET` | `/api/v1/config/supplier-weights`| `ADMIN` | Xem bộ trọng số đánh giá NCC hiện hành | `UC-017` |
-| **26**| `PUT` | `/api/v1/config/supplier-weights`| `ADMIN` | Cập nhật bộ 4 trọng số (ràng buộc tổng 100%)| `UC-017` |
+| **20**| `GET` | `/api/v1/suppliers` | Auth | Danh sách nhà cung cấp & điểm tổng hợp | `UC-002`, `UC-009` |
+| **21**| `POST` | `/api/v1/suppliers` | `ADMIN` | Thêm mới nhà cung cấp | `UC-002` |
+| **22**| `GET` | `/api/v1/suppliers/:id` | Auth | Xem chi tiết thông tin và bảng giá NCC | `UC-002` |
+| **23**| `PUT` | `/api/v1/suppliers/:id` | `ADMIN` | Cập nhật thông tin liên hệ nhà cung cấp | `UC-002` |
+| **24**| `POST` | `/api/v1/suppliers/:id/products` | `ADMIN` | Gán sản phẩm phân phối (Đơn giá, MOQ, Pack) | `UC-002` |
+| **25**| `GET` | `/api/v1/suppliers/evaluations` | Auth | Bảng xếp hạng & chi tiết 4 điểm thành phần | `UC-009` |
+| **26**| `GET` | `/api/v1/suppliers/:id/deliveries` | Auth | Xem lịch sử 10 lần giao hàng gần nhất của NCC | `UC-009` |
+| **27**| `GET` | `/api/v1/config/supplier-weights`| `ADMIN` | Xem bộ trọng số đánh giá NCC hiện hành | `UC-017` |
+| **28**| `PUT` | `/api/v1/config/supplier-weights`| `ADMIN` | Cập nhật bộ 4 trọng số (ràng buộc tổng 100%)| `UC-017` |
 | **NHÓM 4: TỒN KHO & PHÂN TÍCH MA TRẬN ABC-XYZ (INVENTORY & ANALYTICS)** | | | | | |
-| **27**| `GET` | `/api/v1/inventory/dashboard` | Auth | Thống kê KPI 5 cấp rủi ro & tỷ lệ phân bổ | `UC-004` |
-| **28**| `GET` | `/api/v1/inventory/items` | Auth | Bảng tồn kho SKU chi tiết (IP, SS, ROP, DoS) | `UC-004` |
-| **29**| `GET` | `/api/v1/inventory/abc-xyz` | Auth | Ma trận 9 ô ABC-XYZ & danh sách sản phẩm | `UC-005` |
-| **30**| `GET` | `/api/v1/products/:sku/360` | Auth | Xem chi tiết góc nhìn toàn cảnh SKU 360° | `UC-006` |
+| **29**| `GET` | `/api/v1/inventory/dashboard` | Auth | Thống kê KPI 5 cấp rủi ro & tỷ lệ phân bổ | `UC-004` |
+| **30**| `GET` | `/api/v1/inventory/items` | Auth | Bảng tồn kho SKU chi tiết (IP, SS, ROP, DoS) | `UC-004` |
+| **31**| `GET` | `/api/v1/inventory/abc-xyz` | Auth | Ma trận 9 ô ABC-XYZ & danh sách sản phẩm | `UC-005` |
+| **32**| `GET` | `/api/v1/products/:sku/360` | Auth | Xem chi tiết góc nhìn toàn cảnh SKU 360° | `UC-006` |
 | **NHÓM 5: DỰ BÁO NHU CẦU BÁN HÀNG AI (DEMAND FORECASTING)** | | | | | |
-| **31**| `GET` | `/api/v1/forecasts` | Auth | Danh sách tổng cầu dự báo theo khung 7/14/30 | `UC-007` |
-| **32**| `GET` | `/api/v1/forecasts/:sku` | Auth | Biểu đồ chuỗi thời gian & Dải tin cậy 95% | `UC-007` |
-| **33**| `POST` | `/api/v1/forecasts/cold-start` | `STAFF` | Nhập lượng bán dự kiến $D_{expected}$ cho SP mới| `UC-008` |
+| **33**| `GET` | `/api/v1/forecasts` | Auth | Danh sách tổng cầu dự báo theo khung 7/14/30 | `UC-007` |
+| **34**| `GET` | `/api/v1/forecasts/:sku` | Auth | Biểu đồ chuỗi thời gian & Dải tin cậy 95% | `UC-007` |
+| **35**| `POST` | `/api/v1/forecasts/generate` | `STAFF` | Kích hoạt tính toán dự báo AI theo chu kỳ | `UC-007` |
+| **36**| `POST` | `/api/v1/forecasts/cold-start` | `STAFF` | Nhập lượng bán dự kiến $D_{expected}$ cho SP mới| `UC-008` |
 | **NHÓM 6: KHUYẾN NGHỊ MUA HÀNG THÔNG MINH (RECOMMENDATIONS)** | | | | | |
-| **34**| `GET` | `/api/v1/recommendations` | Auth | Danh sách đề xuất mua kèm Explainable Cards | `UC-010` |
-| **35**| `POST` | `/api/v1/recommendations/run-analysis`| `STAFF`| Kích hoạt chạy lại toàn bộ DSS on-demand | `UC-011` |
+| **37**| `GET` | `/api/v1/recommendations` | Auth | Danh sách đề xuất mua kèm Explainable Cards & NCC thay thế | `UC-010` |
+| **38**| `POST` | `/api/v1/recommendations/run-analysis`| `STAFF`| Kích hoạt chạy lại toàn bộ DSS on-demand | `UC-011` |
 | **NHÓM 7: ĐƠN MUA HÀNG & NHẬN HÀNG KHO (PURCHASE ORDERS & RECEIPT)** | | | | | |
-| **36**| `POST` | `/api/v1/purchase-orders` | `STAFF` | Tạo đơn mua hàng mới (Trạng thái `DRAFT`) | `UC-012` |
-| **37**| `POST` | `/api/v1/purchase-orders/:id/confirm`| `STAFF`| Xác nhận chốt đơn (`ORDERED`, tăng On-Order)| `UC-012` |
-| **38**| `GET` | `/api/v1/purchase-orders` | Auth | Tra cứu lịch sử đơn hàng theo 4 trạng thái | `UC-013` |
-| **39**| `GET` | `/api/v1/purchase-orders/:id` | Auth | Chi tiết đơn mua hàng và các dòng sản phẩm | `UC-013` |
-| **40**| `POST` | `/api/v1/purchase-orders/:id/cancel`| `STAFF` | Hủy đơn hàng (giải phóng On-Order nếu có) | `UC-013` |
-| **41**| `POST` | `/api/v1/purchase-orders/:id/receive`| `STAFF`| Ghi nhận nhận hàng nguyên tử (tăng On-Hand) | `UC-014` |
+| **39**| `POST` | `/api/v1/purchase-orders` | `STAFF` | Tạo đơn mua hàng mới (Trạng thái `DRAFT`) | `UC-012` |
+| **40**| `POST` | `/api/v1/purchase-orders/batch` | `STAFF` | Tạo nhiều đơn hàng nháp gom nhóm theo NCC | `UC-010`, `UC-012` |
+| **41**| `POST` | `/api/v1/purchase-orders/:id/confirm`| `STAFF`| Xác nhận chốt đơn (`ORDERED`, tăng On-Order)| `UC-012` |
+| **42**| `GET` | `/api/v1/purchase-orders` | Auth | Tra cứu lịch sử đơn hàng theo 4 trạng thái | `UC-013` |
+| **43**| `GET` | `/api/v1/purchase-orders/:id` | Auth | Chi tiết đơn mua hàng và các dòng sản phẩm | `UC-013` |
+| **44**| `GET` | `/api/v1/purchase-orders/:id/print` | Auth | Dữ liệu mẫu in Phiếu Đơn Mua Hàng chuẩn | `UC-012` |
+| **45**| `POST` | `/api/v1/purchase-orders/:id/cancel`| `STAFF` | Hủy đơn hàng (giải phóng On-Order nếu có) | `UC-013` |
+| **46**| `POST` | `/api/v1/purchase-orders/:id/receive`| `STAFF`| Ghi nhận nhận hàng nguyên tử (tăng On-Hand) | `UC-014` |
+| **47**| `GET` | `/api/v1/purchase-orders/:id/receipt-note`| Auth | Dữ liệu mẫu in Phiếu Nhập Kho thực tế | `UC-014` |
 
 ---
 
@@ -222,18 +228,18 @@ Dưới đây là danh mục toàn bộ **32 endpoints** được chuẩn hóa, 
 | **Xác thực & Quản trị người dùng** | `FR-031`, `FR-032`, `FR-033` | `UC-015`, `UC-016` | `/auth/login`, `/logout`, `/me`, `/users`, `/users/:id/status` | ✅ 100% Bao phủ |
 | **Danh mục Sản phẩm** | `FR-001`, `FR-003` | `UC-001` | `GET/POST/PUT /products`, `PATCH /products/:sku/status` | ✅ 100% Bao phủ |
 | **Danh mục Nhà cung cấp** | `FR-002` | `UC-002` | `GET/POST/PUT /suppliers`, `/suppliers/:id/products` | ✅ 100% Bao phủ |
-| **Nạp dữ liệu Bán hàng & Tồn kho** | `FR-004`, `FR-005`, `FR-006` | `UC-003` | `/data-import/upload`, `/data-import/history`, `/sales-history/manual` | ✅ 100% Bao phủ |
+| **Nạp dữ liệu Bán hàng & Tồn kho** | `FR-004`, `FR-005`, `FR-006` | `UC-003` | `/data-import/upload`, `/data-import/history`, `/data-import/templates/:type`, `/sales-history/manual` | ✅ 100% Bao phủ |
 | **Theo dõi Tồn kho & Rủi ro** | `FR-007`, `FR-008`, `FR-010`, `FR-011`| `UC-004`, `UC-006` | `/inventory/dashboard`, `/inventory/items`, `/products/:sku/360` | ✅ 100% Bao phủ |
 | **Phân tích Ma trận ABC-XYZ** | `FR-009` | `UC-005`, `UC-006` | `/inventory/abc-xyz` | ✅ 100% Bao phủ |
-| **Dự báo Nhu cầu AI** | `FR-012`, `FR-013`, `FR-014`, `FR-015`| `UC-007` | `/forecasts`, `/forecasts/:sku` | ✅ 100% Bao phủ |
+| **Dự báo Nhu cầu AI** | `FR-012`, `FR-013`, `FR-014`, `FR-015`| `UC-007` | `/forecasts`, `/forecasts/:sku`, `/forecasts/generate` | ✅ 100% Bao phủ |
 | **Sản phẩm mới Cold Start** | `FR-016` | `UC-008` | `POST /forecasts/cold-start` | ✅ 100% Bao phủ |
-| **Đánh giá Hiệu suất NCC** | `FR-019`, `FR-020` | `UC-009` | `/suppliers/evaluations` | ✅ 100% Bao phủ |
+| **Đánh giá Hiệu suất NCC** | `FR-019`, `FR-020` | `UC-009` | `/suppliers/evaluations`, `/suppliers/:id/deliveries` | ✅ 100% Bao phủ |
 | **Cấu hình Trọng số NCC** | `FR-034` | `UC-017` | `GET/PUT /config/supplier-weights` | ✅ 100% Bao phủ |
-| **Khuyến nghị Mua hàng Thông minh**| `FR-021`, `FR-023`, `FR-024`, `FR-025`| `UC-010` | `GET /recommendations` | ✅ 100% Bao phủ |
+| **Khuyến nghị Mua hàng Thông minh**| `FR-021`, `FR-023`, `FR-024`, `FR-025`| `UC-010` | `GET /recommendations` (kèm `alternativeSuppliers`) | ✅ 100% Bao phủ |
 | **Chạy lại Phân tích On-demand** | `FR-022` | `UC-011` | `POST /recommendations/run-analysis` | ✅ 100% Bao phủ |
-| **Lập & Chốt Đơn Mua Hàng (PO)** | `FR-026`, `FR-027`, `FR-028`, `FR-029`| `UC-012` | `POST /purchase-orders`, `POST /purchase-orders/:id/confirm` | ✅ 100% Bao phủ |
+| **Lập & Chốt Đơn Mua Hàng (PO)** | `FR-026`, `FR-027`, `FR-028`, `FR-029`| `UC-012` | `POST /purchase-orders`, `/purchase-orders/batch`, `/confirm`, `/print` | ✅ 100% Bao phủ |
 | **Quản lý & Hủy Đơn Mua Hàng** | `FR-030` | `UC-013` | `GET /purchase-orders`, `/purchase-orders/:id`, `/cancel` | ✅ 100% Bao phủ |
-| **Ghi nhận Nhận hàng & Cập nhật Kho**| `FR-017`, `FR-018` | `UC-014` | `POST /purchase-orders/:id/receive` | ✅ 100% Bao phủ |
+| **Ghi nhận Nhận hàng & Cập nhật Kho**| `FR-017`, `FR-018` | `UC-014` | `POST /purchase-orders/:id/receive`, `GET /purchase-orders/:id/receipt-note` | ✅ 100% Bao phủ |
 
 ---
 

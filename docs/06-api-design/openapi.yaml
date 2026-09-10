@@ -66,6 +66,19 @@ paths:
         '401':
           $ref: '#/components/responses/401Unauthorized'
 
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Đăng xuất phiên làm việc
+      description: Thu hồi và kết thúc phiên làm việc an toàn (UC-015 Luồng A3)
+      responses:
+        '200':
+          description: Đăng xuất thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseMessageResponse'
+
   /auth/me:
     get:
       tags: [Auth]
@@ -95,6 +108,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BaseMessageResponse'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '401':
+          $ref: '#/components/responses/401Unauthorized'
 
   /users:
     get:
@@ -127,6 +144,69 @@ paths:
         '409':
           $ref: '#/components/responses/409Conflict'
 
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Xem chi tiết người dùng (Chỉ Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailResponse'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+    put:
+      tags: [Users]
+      summary: Cập nhật thông tin / vai trò người dùng (Chỉ Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+    patch:
+      tags: [Users]
+      summary: Cập nhật một phần thông tin người dùng (Chỉ Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Cập nhật thành công
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+
   /users/{id}/status:
     patch:
       tags: [Users]
@@ -151,6 +231,35 @@ paths:
       responses:
         '200':
           description: Cập nhật thành công
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+
+  /users/{id}/reset-password:
+    post:
+      tags: [Users]
+      summary: Đặt lại mật khẩu tài khoản người dùng (Chỉ Admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Đặt lại mật khẩu thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordResponse'
+        '404':
+          $ref: '#/components/responses/404NotFound'
 
   # ===========================================================================
   # 2. PRODUCTS & INGESTION
@@ -229,11 +338,41 @@ paths:
                 type:
                   type: string
                   enum: [SALES_HISTORY, INVENTORY_SNAPSHOT]
+                overwriteDuplicateDates:
+                  type: boolean
+                  default: true
       responses:
         '200':
           description: Nạp thành công
         '400':
           $ref: '#/components/responses/400BadRequest'
+
+  /data-import/templates/{type}:
+    get:
+      tags: [DataImport]
+      summary: Tải tệp tin Excel/CSV mẫu nạp dữ liệu (UC-003)
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [SALES_HISTORY, STOCK_INVENTORY]
+      responses:
+        '200':
+          description: Tệp tin mẫu Excel hoặc CSV
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+
 
   # ===========================================================================
   # 3. SUPPLIERS & EVALUATION
@@ -285,6 +424,34 @@ paths:
       responses:
         '200':
           description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierEvaluationListResponse'
+
+  /suppliers/{id}/deliveries:
+    get:
+      tags: [Suppliers]
+      summary: Lịch sử các lần giao hàng gần nhất của NCC phục vụ kiểm tra OTIF (UC-009)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierDeliveryListResponse'
+
 
   /config/supplier-weights:
     get:
@@ -408,6 +575,28 @@ paths:
         '200':
           description: Thành công
 
+  /forecasts/generate:
+    post:
+      tags: [Forecasts]
+      summary: Kích hoạt tính toán dự báo AI theo chu kỳ hoặc toàn bộ (UC-007)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                horizonDays:
+                  type: integer
+                  enum: [0, 7, 14, 30]
+                  default: 14
+      responses:
+        '200':
+          description: Tính toán dự báo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForecastGenerateResponse'
+
   # ===========================================================================
   # 6. RECOMMENDATIONS
   # ===========================================================================
@@ -427,9 +616,18 @@ paths:
           schema:
             type: string
             enum: [OUT_OF_STOCK, CRITICAL, WARNING]
+        - name: category
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationListResponse'
+
 
   /recommendations/run-analysis:
     post:
@@ -454,6 +652,10 @@ paths:
           schema:
             type: string
             enum: [DRAFT, ORDERED, RECEIVED, CANCELLED]
+        - name: supplierId
+          in: query
+          schema:
+            type: integer
       responses:
         '200':
           description: Thành công
@@ -469,6 +671,24 @@ paths:
       responses:
         '201':
           description: Tạo thành công
+
+  /purchase-orders/batch:
+    post:
+      tags: [PurchaseOrders]
+      summary: Tạo đồng thời nhiều đơn mua hàng gom nhóm theo NCC từ khuyến nghị (UC-010, UC-012)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCreateOrderRequest'
+      responses:
+        '201':
+          description: Tạo các đơn hàng thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchCreateOrderResponse'
 
   /purchase-orders/{id}:
     get:
@@ -499,6 +719,24 @@ paths:
           description: Xác nhận thành công
         '422':
           $ref: '#/components/responses/422Unprocessable'
+
+  /purchase-orders/{id}/print:
+    get:
+      tags: [PurchaseOrders]
+      summary: Lấy dữ liệu mẫu in Phiếu Đơn Mua Hàng chuẩn gửi NCC (UC-012)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrintPurchaseOrderResponse'
 
   /purchase-orders/{id}/cancel:
     post:
@@ -545,6 +783,25 @@ paths:
           description: Nhận hàng thành công
         '422':
           $ref: '#/components/responses/422Unprocessable'
+
+  /purchase-orders/{id}/receipt-note:
+    get:
+      tags: [PurchaseOrders]
+      summary: Lấy dữ liệu mẫu in Phiếu Nhập Kho thực tế (UC-014)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptNoteResponse'
+
 
 # =============================================================================
 # COMPONENTS (SCHEMAS, RESPONSES, PARAMETERS)
@@ -701,9 +958,53 @@ components:
               type: string
             username:
               type: string
+            fullName:
+              type: string
+            email:
+              type: string
             role:
               type: string
               enum: [ADMIN, STAFF]
+            isActive:
+              type: boolean
+            mustChangePassword:
+              type: boolean
+
+    UserDetailResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            fullName:
+              type: string
+            email:
+              type: string
+            role:
+              type: string
+              enum: [ADMIN, STAFF]
+            isActive:
+              type: boolean
+            mustChangePassword:
+              type: boolean
+            lastLoginAt:
+              type: string
+              format: date-time
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
 
     UserListResponse:
       type: object
@@ -734,6 +1035,44 @@ components:
         role:
           type: string
           enum: [ADMIN, STAFF]
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [ADMIN, STAFF]
+
+    ResetPasswordRequest:
+      type: object
+      properties:
+        newPassword:
+          type: string
+          description: Mật khẩu mới (tùy chọn, nếu để trống hệ thống tự sinh ngẫu nhiên)
+
+    ResetPasswordResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            mustChangePassword:
+              type: boolean
+            message:
+              type: string
 
     ProductListResponse:
       type: object
@@ -869,3 +1208,378 @@ components:
               defectiveQuantity:
                 type: integer
                 minimum: 0
+
+    SupplierEvaluationListResponse:
+      type: object
+      required: [success, data, timestamp]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            type: object
+            required: [supplierId, supplierCode, supplierName, totalScore, rank]
+            properties:
+              supplierId:
+                type: integer
+              supplierCode:
+                type: string
+              supplierName:
+                type: string
+              deliveryCountAnalyzed:
+                type: integer
+              totalScore:
+                type: number
+              rank:
+                type: integer
+              isNewSupplier:
+                type: boolean
+              scores:
+                type: object
+                properties:
+                  priceScore:
+                    type: number
+                  otifScore:
+                    type: number
+                  qualityScore:
+                    type: number
+                  leadTimeScore:
+                    type: number
+        timestamp:
+          type: string
+          format: date-time
+
+    SupplierDeliveryListResponse:
+      type: object
+      required: [success, data, timestamp]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            type: object
+            required: [id, poId, poCode, promisedDeliveryDate, actualDeliveryDate, isOtif]
+            properties:
+              id:
+                type: integer
+              poId:
+                type: integer
+              poCode:
+                type: string
+              promisedDeliveryDate:
+                type: string
+                format: date
+              actualDeliveryDate:
+                type: string
+                format: date
+              leadTimeDays:
+                type: integer
+              totalOrderedQuantity:
+                type: integer
+              totalDeliveredQuantity:
+                type: integer
+              totalDefectiveQuantity:
+                type: integer
+              isOtif:
+                type: boolean
+              notes:
+                type: string
+              createdAt:
+                type: string
+                format: date-time
+        timestamp:
+          type: string
+          format: date-time
+
+    ForecastGenerateResponse:
+      type: object
+      required: [success, data, timestamp]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [skusAnalyzed, horizonDays, message]
+          properties:
+            skusAnalyzed:
+              type: integer
+            horizonDays:
+              type: integer
+            aiModelCount:
+              type: integer
+            fallbackCount:
+              type: integer
+            coldStartCount:
+              type: integer
+            message:
+              type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    RecommendationListResponse:
+      type: object
+      required: [success, data, timestamp]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            type: object
+            required: [sku, productName, recommendedQuantity, urgencyLevel, primarySupplier]
+            properties:
+              sku:
+                type: string
+              productName:
+                type: string
+              category:
+                type: string
+              unit:
+                type: string
+              currentStock:
+                type: integer
+              onOrder:
+                type: integer
+              safetyStock:
+                type: integer
+              reorderPoint:
+                type: integer
+              forecastDemand:
+                type: integer
+              recommendedQuantity:
+                type: integer
+              urgencyLevel:
+                type: string
+                enum: [OUT_OF_STOCK, CRITICAL, WARNING]
+              primarySupplier:
+                type: object
+                required: [supplierId, supplierName, score, purchasePrice, moq, packSize, leadTimeDays]
+                properties:
+                  supplierId:
+                    type: integer
+                  supplierName:
+                    type: string
+                  score:
+                    type: number
+                  purchasePrice:
+                    type: number
+                  moq:
+                    type: integer
+                  packSize:
+                    type: integer
+                  leadTimeDays:
+                    type: integer
+              alternativeSuppliers:
+                type: array
+                items:
+                  type: object
+                  required: [supplierId, supplierName, score, purchasePrice, moq, packSize, leadTimeDays]
+                  properties:
+                    supplierId:
+                      type: integer
+                    supplierName:
+                      type: string
+                    score:
+                      type: number
+                    purchasePrice:
+                      type: number
+                    moq:
+                      type: integer
+                    packSize:
+                      type: integer
+                    leadTimeDays:
+                      type: integer
+              explanationCard:
+                type: object
+                properties:
+                  reason:
+                    type: string
+                  formulaApplied:
+                    type: string
+                  stockoutRiskDate:
+                    type: string
+                    format: date
+        timestamp:
+          type: string
+          format: date-time
+
+    BatchCreateOrderRequest:
+      type: object
+      required: [orders]
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateOrderRequest'
+
+    BatchCreateOrderResponse:
+      type: object
+      required: [success, data, timestamp]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [createdCount, orders, message]
+          properties:
+            createdCount:
+              type: integer
+            orders:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  poCode:
+                    type: string
+                  supplierId:
+                    type: integer
+                  status:
+                    type: string
+                  totalAmount:
+                    type: number
+                  itemCount:
+                    type: integer
+            message:
+              type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    PrintPurchaseOrderResponse:
+      type: object
+      required: [success, data, timestamp]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [poCode, status, orderDate, promisedDeliveryDate, store, supplier, items, totalAmount]
+          properties:
+            poCode:
+              type: string
+            status:
+              type: string
+            orderDate:
+              type: string
+              format: date
+            promisedDeliveryDate:
+              type: string
+              format: date
+            store:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                phone:
+                  type: string
+                purchaserName:
+                  type: string
+            supplier:
+              type: object
+              properties:
+                name:
+                  type: string
+                code:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  sku:
+                    type: string
+                  productName:
+                    type: string
+                  unit:
+                    type: string
+                  orderedQuantity:
+                    type: integer
+                  unitPrice:
+                    type: number
+                  amount:
+                    type: number
+            totalAmount:
+              type: number
+            totalAmountInWords:
+              type: string
+            notes:
+              type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    ReceiptNoteResponse:
+      type: object
+      required: [success, data, timestamp]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [receiptCode, poCode, supplierName, receiverName, items, totalDelivered, totalDefective, totalAccepted]
+          properties:
+            receiptCode:
+              type: string
+            poCode:
+              type: string
+            supplierName:
+              type: string
+            promisedDeliveryDate:
+              type: string
+              format: date
+            actualDeliveryDate:
+              type: string
+              format: date
+            receiverName:
+              type: string
+            isOtif:
+              type: boolean
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  sku:
+                    type: string
+                  productName:
+                    type: string
+                  unit:
+                    type: string
+                  orderedQuantity:
+                    type: integer
+                  deliveredQuantity:
+                    type: integer
+                  defectiveQuantity:
+                    type: integer
+                  acceptedQuantity:
+                    type: integer
+            totalDelivered:
+              type: integer
+            totalDefective:
+              type: integer
+            totalAccepted:
+              type: integer
+            notes:
+              type: string
+        timestamp:
+          type: string
+          format: date-time
+

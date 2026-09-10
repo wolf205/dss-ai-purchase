@@ -11,6 +11,9 @@ Mục tiêu thiết kế kiến trúc Frontend:
 2. **Hiệu năng tải trang cực nhanh ($< 2$ giây theo `NFR-001`):** Sử dụng **TanStack Query** để lưu bộ nhớ đệm (Server State Caching), giảm thiểu tối đa các yêu cầu mạng dư thừa.
 3. **Trực quan hóa dữ liệu AI mạnh mẽ (`NFR-004`, `FR-014`):** Sử dụng **Apache ECharts** để hiển thị biểu đồ chuỗi thời gian kết hợp dải mây biến động tin cậy (Confidence Interval Shaded Area) và ma trận tương tác 9 ô ABC-XYZ.
 
+> 📖 **Tài liệu tham khảo chuyên sâu:** Xem toàn bộ đặc tả thiết kế màn hình, wireframe blueprint và phân tích khoảng cách nghiệp vụ UI/UX tại [`ui-design-spec.md`](./ui-design-spec.md).
+
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                       FEATURE-BASED ARCHITECTURE OVERVIEW                   │
