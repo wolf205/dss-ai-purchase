@@ -22,6 +22,8 @@ class SMAStrategy(BaseForecastStrategy):
     def compute_sma(sales_series: pd.Series, horizon_days: int) -> Tuple[np.ndarray, float]:
         """
         Tính toán mảng dự báo SMA-7 và độ lệch chuẩn của 7 ngày gần nhất.
+        Tích hợp chỉ số chu kỳ tuần (Day-of-Week Seasonality) nếu chuỗi có >= 14 ngày
+        để tránh tạo ra đường dự báo phẳng lì.
         """
         if len(sales_series) == 0:
             return np.zeros(horizon_days, dtype=float), 1.0
@@ -30,7 +32,25 @@ class SMAStrategy(BaseForecastStrategy):
         recent_window = sales_series.iloc[-window_size:]
 
         sma_val = max(0.0, float(recent_window.mean()))
-        predictions = np.full(horizon_days, sma_val, dtype=float)
+
+        # Nếu có từ 14 ngày trở lên và index là DatetimeIndex, điều chỉnh theo chu kỳ ngày trong tuần
+        if len(sales_series) >= 14 and isinstance(sales_series.index, pd.DatetimeIndex):
+            overall_mean = float(sales_series.mean())
+            if overall_mean > 0:
+                dow_means = sales_series.groupby(sales_series.index.dayofweek).mean()
+                dow_factors = (dow_means / overall_mean).to_dict()
+            else:
+                dow_factors = {i: 1.0 for i in range(7)}
+
+            last_date = sales_series.index[-1]
+            predictions = np.zeros(horizon_days, dtype=float)
+            for i in range(1, horizon_days + 1):
+                target_date = last_date + pd.Timedelta(days=i)
+                factor = dow_factors.get(target_date.dayofweek, 1.0)
+                bounded_factor = max(0.5, min(1.8, float(factor)))
+                predictions[i - 1] = max(0.0, sma_val * bounded_factor)
+        else:
+            predictions = np.full(horizon_days, sma_val, dtype=float)
 
         if window_size > 1:
             std_val = float(recent_window.std(ddof=1))
