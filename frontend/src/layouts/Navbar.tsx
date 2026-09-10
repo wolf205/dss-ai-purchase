@@ -22,8 +22,13 @@ export const Navbar: React.FC = () => {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    if (newPassword.length < 6) {
-      setErrorMsg('Mật khẩu mới phải có tối thiểu 6 ký tự.');
+    if (newPassword.length < 8) {
+      setErrorMsg('Mật khẩu mới phải có tối thiểu 8 ký tự.');
+      return;
+    }
+
+    if (oldPassword === newPassword) {
+      setErrorMsg('Mật khẩu mới không được trùng với mật khẩu hiện tại.');
       return;
     }
 
@@ -35,13 +40,14 @@ export const Navbar: React.FC = () => {
     setIsLoading(true);
     try {
       await authApi.changePassword({ oldPassword, newPassword });
-      setSuccessMsg('Đổi mật khẩu thành công!');
-      setTimeout(() => {
+      setSuccessMsg('Đổi mật khẩu thành công! Vui lòng đăng nhập lại với mật khẩu mới...');
+      setTimeout(async () => {
         setShowPasswordModal(false);
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
         setSuccessMsg(null);
+        await logout();
       }, 1500);
     } catch (err: any) {
       setErrorMsg(err.response?.data?.error?.message || 'Không thể đổi mật khẩu. Vui lòng kiểm tra mật khẩu hiện tại.');

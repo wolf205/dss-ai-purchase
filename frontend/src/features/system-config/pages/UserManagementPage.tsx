@@ -81,6 +81,16 @@ export const UserManagementPage: React.FC = () => {
       return;
     }
 
+    if (!/^[a-zA-Z0-9_.-]+$/.test(username.trim())) {
+      setFormError('Tên đăng nhập chỉ được chứa chữ cái, số, dấu gạch dưới, gạch ngang hoặc dấu chấm (không chứa khoảng trắng).');
+      return;
+    }
+
+    if (password.length < 8) {
+      setFormError('Mật khẩu khởi tạo phải có tối thiểu 8 ký tự.');
+      return;
+    }
+
     setFormLoading(true);
     setFormError(null);
     try {

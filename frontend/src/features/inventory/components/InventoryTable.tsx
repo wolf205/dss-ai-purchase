@@ -5,12 +5,14 @@ import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import Badge, { RiskLevel } from '../../../components/ui/Badge';
 import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
+import Pagination from '../../../components/ui/Pagination';
 import { formatDaysOfSupply } from '../../../lib/formatters';
 
 interface InventoryTableProps {
   items: InventoryItem[];
   isLoading?: boolean;
   selectedRisk?: RiskLevel | string | null;
+  selectedSegment?: string | null;
   onSelectSku360: (sku: string) => void;
 }
 
@@ -18,13 +20,19 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
   items,
   isLoading = false,
   selectedRisk,
+  selectedSegment,
   onSelectSku360,
 }) => {
   const [search, setSearch] = useState('');
   const [filterDeadStock, setFilterDeadStock] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const filteredItems = items.filter((item) => {
     if (selectedRisk && item.riskLevel !== selectedRisk) {
+      return false;
+    }
+    if (selectedSegment && item.abcXyzSegment !== selectedSegment) {
       return false;
     }
     if (filterDeadStock && !item.isDeadStock) {
@@ -40,6 +48,8 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     }
     return true;
   });
+
+  const paginatedItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="space-y-4">
@@ -68,12 +78,13 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       </div>
 
       {/* Table */}
-      <Table isLoading={isLoading} isEmpty={filteredItems.length === 0} colSpan={10}>
+      <Table isLoading={isLoading} isEmpty={filteredItems.length === 0} colSpan={11}>
         <TableHeader>
           <TableRow>
             <TableHead>Mã SKU</TableHead>
             <TableHead>Tên Sản Phẩm</TableHead>
             <TableHead>Ngành Hàng</TableHead>
+            <TableHead className="text-center">Phân Nhóm</TableHead>
             <TableHead className="text-right">Tồn Khả Dụng (On-Hand)</TableHead>
             <TableHead className="text-right">Chờ Về (On-Order)</TableHead>
             <TableHead className="text-right">Vị Trí Tồn (IP)</TableHead>
@@ -85,7 +96,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredItems.map((item) => (
+          {paginatedItems.map((item) => (
             <TableRow key={item.sku}>
               <TableCell className="font-mono font-bold text-xs text-slate-800">
                 {item.sku}
@@ -95,6 +106,15 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                 {item.unit && <span className="text-[11px] text-slate-400">ĐVT: {item.unit}</span>}
               </TableCell>
               <TableCell className="text-xs text-slate-600">{item.category}</TableCell>
+              <TableCell className="text-center">
+                {item.abcXyzSegment ? (
+                  <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-mono font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    {item.abcXyzSegment}
+                  </span>
+                ) : (
+                  <span className="text-slate-300 text-xs">-</span>
+                )}
+              </TableCell>
               <TableCell className="text-right font-semibold text-slate-800">{item.onHand}</TableCell>
               <TableCell className="text-right text-sky-700 font-medium">
                 {item.onOrder > 0 ? `+${item.onOrder}` : '0'}
@@ -127,6 +147,14 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           ))}
         </TableBody>
       </Table>
+
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filteredItems.length}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+      />
     </div>
   );
 };

@@ -207,23 +207,23 @@ export const DataImportPage: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => ingestionApi.downloadTemplate('SALES_HISTORY')}
+                onClick={() => ingestionApi.downloadTemplate('SALES_HISTORY', 'xlsx')}
                 className="w-full text-left px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-brand-300 font-medium flex items-center justify-between transition-colors cursor-pointer"
               >
                 <span className="flex items-center gap-2">
                   <FileSpreadsheet className="w-3.5 h-3.5 text-brand-400" />
-                  Mẫu Lịch Sử Bán Hàng (.csv)
+                  Mẫu Lịch Sử Bán Hàng (.xlsx)
                 </span>
                 <Download className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
-                onClick={() => ingestionApi.downloadTemplate('INVENTORY_SNAPSHOT')}
+                onClick={() => ingestionApi.downloadTemplate('INVENTORY_SNAPSHOT', 'xlsx')}
                 className="w-full text-left px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-emerald-300 font-medium flex items-center justify-between transition-colors cursor-pointer"
               >
                 <span className="flex items-center gap-2">
                   <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                  Mẫu Kiểm Kê Tồn Kho (.csv)
+                  Mẫu Kiểm Kê Tồn Kho (.xlsx)
                 </span>
                 <Download className="w-3.5 h-3.5" />
               </button>

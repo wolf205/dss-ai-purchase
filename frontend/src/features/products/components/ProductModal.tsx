@@ -61,6 +61,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
       return;
     }
 
+    if (Number(costPrice) <= 0 || Number(sellingPrice) <= 0) {
+      setErrorMsg('Giá vốn và giá bán phải lớn hơn 0 VNĐ.');
+      return;
+    }
+
     setIsLoading(true);
     setErrorMsg(null);
     try {
@@ -76,7 +81,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         });
       } else {
         await productApi.createProduct({
-          sku: sku.trim(),
+          sku: sku.trim().toUpperCase(),
           name: name.trim(),
           category,
           unit,
@@ -116,7 +121,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             label="Mã SKU"
             placeholder="Ví dụ: MILK-VNM-180"
             value={sku}
-            onChange={(e) => setSku(e.target.value)}
+            onChange={(e) => setSku(e.target.value.toUpperCase())}
             disabled={!!productToEdit}
             required
           />
@@ -150,8 +155,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
             type="number"
-            min="0"
-            step="500"
+            min="100"
+            step="100"
             label="Giá Vốn Mua Vào (VNĐ)"
             value={costPrice}
             onChange={(e) => setCostPrice(e.target.value === '' ? '' : Number(e.target.value))}
@@ -160,8 +165,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
           <Input
             type="number"
-            min="0"
-            step="500"
+            min="100"
+            step="100"
             label="Giá Bán Niêm Yết (VNĐ)"
             value={sellingPrice}
             onChange={(e) => setSellingPrice(e.target.value === '' ? '' : Number(e.target.value))}

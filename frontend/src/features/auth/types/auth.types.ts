@@ -20,10 +20,18 @@ export interface LoginCredentials {
 export interface LoginResponseData {
   accessToken: string;
   expiresIn: number;
+  refreshToken?: string;
   user: User;
+}
+
+export interface RefreshTokenResponseData {
+  accessToken: string;
+  expiresIn: number;
+  refreshToken: string;
 }
 
 export interface ChangePasswordPayload {
   oldPassword: string;
   newPassword: string;
 }
+

@@ -35,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch {
           // Token invalid or expired
           localStorage.removeItem('dss_auth_token');
+          localStorage.removeItem('dss_refresh_token');
           localStorage.removeItem('dss_auth_user');
           setToken(null);
           setUser(null);
@@ -49,18 +50,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (credentials: LoginCredentials) => {
     const res = await authApi.login(credentials);
     localStorage.setItem('dss_auth_token', res.accessToken);
+    if (res.refreshToken) {
+      localStorage.setItem('dss_refresh_token', res.refreshToken);
+    }
     localStorage.setItem('dss_auth_user', JSON.stringify(res.user));
     setToken(res.accessToken);
     setUser(res.user);
   };
 
-  const logout = () => {
-    localStorage.removeItem('dss_auth_token');
-    localStorage.removeItem('dss_auth_user');
-    setToken(null);
-    setUser(null);
-    window.location.href = '/login';
+  const logout = async () => {
+    try {
+      const storedRefreshToken = localStorage.getItem('dss_refresh_token');
+      await authApi.logout(storedRefreshToken);
+    } catch (err) {
+      console.warn('Logout API error (ignored for graceful local logout):', err);
+    } finally {
+      localStorage.removeItem('dss_auth_token');
+      localStorage.removeItem('dss_refresh_token');
+      localStorage.removeItem('dss_auth_user');
+      setToken(null);
+      setUser(null);
+      window.location.href = '/login';
+    }
   };
+
 
   return (
     <AuthContext.Provider

@@ -70,11 +70,44 @@ const MOCK_PRODUCTS: Product[] = [
   },
 ];
 
+export interface GetProductsParams {
+  search?: string;
+  category?: string;
+  isActive?: boolean | 'all';
+  limit?: number;
+  page?: number;
+  sortBy?: 'sku' | 'name' | 'category' | 'costPrice' | 'sellingPrice' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface ProductListResponse {
+  products: Product[];
+  meta: PaginationMeta;
+}
+
 export const productApi = {
-  getProducts: async (params?: { search?: string; category?: string; isActive?: boolean }): Promise<Product[]> => {
+  getProductsWithMeta: async (params?: GetProductsParams): Promise<ProductListResponse> => {
+    const apiParams: Record<string, any> = { ...params };
+    if (params?.isActive !== undefined) {
+      apiParams.isActive = params.isActive === 'all' ? 'all' : String(params.isActive);
+    }
+
     try {
-      const res = await apiClient.get<{ success: boolean; data: Product[] }>('/products', { params });
-      return res.data.data;
+      const res = await apiClient.get<{ success: boolean; data: Product[]; meta: PaginationMeta }>('/products', {
+        params: apiParams,
+      });
+      return {
+        products: res.data.data,
+        meta: res.data.meta,
+      };
     } catch {
       let filtered = [...MOCK_PRODUCTS];
       if (params?.search) {
@@ -84,11 +117,25 @@ export const productApi = {
       if (params?.category) {
         filtered = filtered.filter((p) => p.category === params.category);
       }
-      if (params?.isActive !== undefined) {
+      if (params?.isActive !== undefined && params.isActive !== 'all') {
         filtered = filtered.filter((p) => p.isActive === params.isActive);
       }
-      return filtered;
+      return {
+        products: filtered,
+        meta: {
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 20,
+          total: filtered.length,
+          totalItems: filtered.length,
+          totalPages: 1,
+        },
+      };
     }
+  },
+
+  getProducts: async (params?: GetProductsParams): Promise<Product[]> => {
+    const result = await productApi.getProductsWithMeta(params);
+    return result.products;
   },
 
   getCategories: async (): Promise<string[]> => {
@@ -107,6 +154,14 @@ export const productApi = {
 
   updateProduct: async (sku: string, payload: UpdateProductPayload): Promise<Product> => {
     const res = await apiClient.patch<{ success: boolean; data: Product }>(`/products/${sku}`, payload);
+    return res.data.data;
+  },
+
+  updateProductStatus: async (sku: string, isActive: boolean): Promise<{ sku: string; isActive: boolean; message: string }> => {
+    const res = await apiClient.patch<{ success: boolean; data: { sku: string; isActive: boolean; message: string } }>(
+      `/products/${sku}/status`,
+      { isActive }
+    );
     return res.data.data;
   },
 };

@@ -33,6 +33,9 @@ export interface InventoryItem {
   isDeadStock: boolean;
   unit?: string;
   costPrice?: number;
+  abcClass?: string;
+  xyzClass?: string;
+  abcXyzSegment?: string;
 }
 
 export interface Sku360Data {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Sparkles, RefreshCw, Cpu, AlertTriangle } from 'lucide-react';
+import { TrendingUp, Sparkles, RefreshCw, Cpu, AlertTriangle, Play, CheckCircle2, AlertCircle } from 'lucide-react';
 import TimeSeriesForecastChart, { ForecastPoint } from '../../../components/charts/TimeSeriesForecastChart';
 import ColdStartModal from '../components/ColdStartModal';
 import Button from '../../../components/ui/Button';
@@ -15,13 +15,15 @@ export const ForecastingPage: React.FC = () => {
   const [points, setPoints] = useState<ForecastPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [showColdStartModal, setShowColdStartModal] = useState(false);
+  const [alertInfo, setAlertInfo] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const fetchSummary = async () => {
     setLoading(true);
     try {
       const data = await forecastApi.getForecasts({ horizon });
-      setForecasts(data);
+      setForecasts(data || []);
       if (data && data.length > 0) {
         setSelectedSku((prev) => (data.some((f) => f.sku === prev) ? prev : data[0].sku));
       } else {
@@ -47,6 +49,29 @@ export const ForecastingPage: React.FC = () => {
     }
   };
 
+  const handleRunForecast = async (targetHorizon?: number) => {
+    setGenerating(true);
+    setAlertInfo(null);
+    try {
+      const res = await forecastApi.generateForecasts({ horizonDays: targetHorizon });
+      setAlertInfo({
+        type: 'success',
+        message: res.message || `Đã hoàn tất tính toán dự báo AI cho ${res.skusAnalyzed} SKU!`,
+      });
+      await fetchSummary();
+      if (selectedSku) {
+        await fetchChartPoints(selectedSku, targetHorizon || horizon);
+      }
+    } catch (err: any) {
+      setAlertInfo({
+        type: 'error',
+        message: 'Lỗi khi kích hoạt tính toán dự báo AI. Vui lòng kiểm tra lại dịch vụ AI Service.',
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   useEffect(() => {
     fetchSummary();
   }, [horizon]);
@@ -64,7 +89,7 @@ export const ForecastingPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
             <TrendingUp className="w-7 h-7 text-brand-600" />
@@ -75,7 +100,7 @@ export const ForecastingPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Horizon Selector (7, 14, 30 days) */}
           <div className="flex items-center bg-white rounded-xl border border-slate-200 p-1 shadow-xs">
             {[7, 14, 30].map((h) => (
@@ -93,6 +118,29 @@ export const ForecastingPage: React.FC = () => {
               </button>
             ))}
           </div>
+
+          {/* NÚT CHẠY DỰ BÁO AI NỔI BẬT */}
+          <Button
+            variant="primary"
+            size="sm"
+            className="bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-sm"
+            leftIcon={<Sparkles className={`w-3.5 h-3.5 text-amber-300 ${generating ? 'animate-spin' : ''}`} />}
+            onClick={() => handleRunForecast(horizon)}
+            isLoading={generating}
+          >
+            Chạy Dự Báo {horizon}N
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Play className="w-3.5 h-3.5 text-slate-600" />}
+            onClick={() => handleRunForecast(0)}
+            disabled={generating}
+            title="Chạy mô hình Holt-Winters cho cả 3 chu kỳ 7, 14, 30 ngày"
+          >
+            Chạy Toàn Bộ (7, 14, 30N)
+          </Button>
 
           <Button
             variant="outline"
@@ -118,8 +166,35 @@ export const ForecastingPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Alert Notification Toast */}
+      {alertInfo && (
+        <div
+          className={cn(
+            'p-4 rounded-xl border text-xs flex items-center justify-between shadow-xs transition-all',
+            alertInfo.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : 'bg-rose-50 border-rose-200 text-rose-900'
+          )}
+        >
+          <div className="flex items-center gap-2">
+            {alertInfo.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            )}
+            <span className="font-semibold">{alertInfo.message}</span>
+          </div>
+          <button
+            onClick={() => setAlertInfo(null)}
+            className="text-slate-400 hover:text-slate-600 text-xs font-bold ml-4"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Main Forecast Chart with Confidence Band */}
-      {selectedSku ? (
+      {selectedSku && selectedItem ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
             <div>
@@ -137,7 +212,7 @@ export const ForecastingPage: React.FC = () => {
                 )}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Biểu đồ trực quan hóa dữ liệu bán thực tế quá khứ và dải tin cậy 95% trong {horizon} ngày tới (FR-014)
+                Biểu đồ trực quan hóa dữ liệu bán thực tế 14 ngày quá khứ và dải tin cậy 95% trong {horizon} ngày tới (FR-014)
               </p>
             </div>
 
@@ -162,6 +237,7 @@ export const ForecastingPage: React.FC = () => {
           <div className="pt-2">
             {chartLoading ? (
               <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 text-xs">
+                <RefreshCw className="w-6 h-6 animate-spin text-brand-500 mb-2" />
                 Đang tính toán biểu đồ dự báo...
               </div>
             ) : (
@@ -179,12 +255,41 @@ export const ForecastingPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm flex flex-col items-center justify-center text-center">
-          <Sparkles className="w-10 h-10 text-slate-300 mb-3" />
-          <h4 className="text-base font-bold text-slate-800">Chưa Có Dữ Liệu Dự Báo Nhu Cầu</h4>
-          <p className="text-xs text-slate-500 max-w-md mt-1">
-            Hệ thống chưa có bản ghi dự báo nào. Hãy nhập dữ liệu bán hàng & tồn kho tại mục <strong>Nhập Dữ Liệu</strong> hoặc nhấn <strong>Làm Mới</strong> sau khi chạy phân tích DSS.
-          </p>
+        /* Empty State Đột Phá Có Nút Kích Hoạt Dự Báo Ngay Tại Chỗ */
+        <div className="bg-gradient-to-b from-slate-50/70 to-white rounded-2xl border-2 border-dashed border-slate-200 p-10 shadow-xs flex flex-col items-center justify-center text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center shadow-xs">
+            <Cpu className="w-7 h-7 text-brand-600 animate-pulse" />
+          </div>
+          <div className="max-w-md space-y-1.5">
+            <h4 className="text-lg font-black text-slate-800">
+              Chưa Có Dữ Liệu Dự Báo Cho Chu Kỳ {horizon} Ngày
+            </h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Mô hình AI chuỗi thời gian Holt-Winters & dải tin cậy 95% chưa được tính toán cho khung thời gian {horizon} ngày. 
+              Hãy kích hoạt tính toán ngay để phân tích xu hướng bán hàng của toàn bộ sản phẩm.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Button
+              variant="primary"
+              size="md"
+              className="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 shadow-sm"
+              leftIcon={<Sparkles className="w-4 h-4 text-amber-300" />}
+              onClick={() => handleRunForecast(horizon)}
+              isLoading={generating}
+            >
+              ⚡ Kích Hoạt Dự Báo AI {horizon} Ngày Ngay
+            </Button>
+            <Button
+              variant="outline"
+              size="md"
+              className="font-semibold text-slate-700"
+              onClick={() => handleRunForecast(0)}
+              disabled={generating}
+            >
+              Chạy Dự Báo Toàn Bộ (7, 14, 30 Ngày)
+            </Button>
+          </div>
         </div>
       )}
 

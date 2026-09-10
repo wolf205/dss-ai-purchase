@@ -33,8 +33,12 @@ export const TimeSeriesForecastChart: React.FC<TimeSeriesForecastChartProps> = (
   showTitle,
 }) => {
   const dates = data.map((d) => d.date);
-  const actualSeries = data.map((d) => (d.actual !== undefined ? d.actual : null));
-  const forecastSeries = data.map((d) => (d.forecast !== undefined ? d.forecast : null));
+  const actualSeries = data.map((d) => (d.actual !== undefined && d.actual !== null ? d.actual : null));
+  const forecastSeries = data.map((d) => {
+    if (d.forecast !== undefined && d.forecast !== null) return d.forecast;
+    if ((d as any).predicted !== undefined && (d as any).predicted !== null) return (d as any).predicted;
+    return null;
+  });
   const lowerSeries = data.map((d) => (d.lowerBound !== undefined ? d.lowerBound : null));
   const bandSeries = data.map((d) => {
     if (d.upperBound !== undefined && d.lowerBound !== undefined && d.upperBound !== null && d.lowerBound !== null) {

@@ -85,11 +85,20 @@ export const AbcXyzMatrixPage: React.FC = () => {
               <span className="text-slate-500 font-normal">(Toàn bộ 9 ô)</span>
             )}
           </h3>
+          {selectedSegment && (
+            <button
+              onClick={() => setSelectedSegment(null)}
+              className="text-xs text-brand-600 hover:text-brand-800 font-semibold hover:underline"
+            >
+              ✕ Bỏ lọc phân nhóm
+            </button>
+          )}
         </div>
 
         <InventoryTable
           items={items}
           isLoading={loading}
+          selectedSegment={selectedSegment}
           onSelectSku360={(sku) => setActiveSku360(sku)}
         />
       </div>

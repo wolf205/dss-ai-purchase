@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Search, RefreshCw, Edit3, Power, Check, X } from 'lucide-react';
-import productApi from '../api/productApi';
+import { Package, Plus, Search, RefreshCw, Edit3, Power, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import productApi, { PaginationMeta } from '../api/productApi';
 import { Product } from '../types/product.types';
 import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../components/ui/Table';
 import Button from '../../../components/ui/Button';
@@ -13,24 +13,32 @@ export const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta>({ page: 1, limit: 20, total: 0, totalItems: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (targetPage = page) => {
     setLoading(true);
     try {
-      const [prods, cats] = await Promise.all([
-        productApi.getProducts({
+      const activeParam = statusFilter === 'active' ? true : statusFilter === 'inactive' ? false : 'all';
+      const [res, cats] = await Promise.all([
+        productApi.getProductsWithMeta({
           search: search.trim() || undefined,
           category: selectedCategory || undefined,
+          isActive: activeParam,
+          page: targetPage,
+          limit: 20,
         }),
         productApi.getCategories(),
       ]);
-      setProducts(prods);
+      setProducts(res.products);
+      setMeta(res.meta);
       setCategories(cats);
     } finally {
       setLoading(false);
@@ -38,12 +46,20 @@ export const ProductsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, [selectedCategory]);
+    setPage(1);
+    fetchProducts(1);
+  }, [selectedCategory, statusFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchProducts();
+    setPage(1);
+    fetchProducts(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > meta.totalPages) return;
+    setPage(newPage);
+    fetchProducts(newPage);
   };
 
   const handleToggleStatus = async (product: Product) => {
@@ -55,7 +71,7 @@ export const ProductsPage: React.FC = () => {
 
     if (confirm(confirmMsg)) {
       try {
-        await productApi.updateProduct(product.sku, { isActive: nextStatus });
+        await productApi.updateProductStatus(product.sku, nextStatus);
         await fetchProducts();
       } catch (err: any) {
         alert(err.response?.data?.error?.message || 'Không thể cập nhật trạng thái sản phẩm.');
@@ -82,7 +98,7 @@ export const ProductsPage: React.FC = () => {
             variant="outline"
             size="sm"
             leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />}
-            onClick={fetchProducts}
+            onClick={() => fetchProducts()}
             disabled={loading}
           >
             Làm Mới
@@ -118,7 +134,19 @@ export const ProductsPage: React.FC = () => {
           </Button>
         </form>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+            className="text-xs border border-slate-300 rounded-lg py-2 px-3 bg-white text-slate-700 focus:ring-2 focus:ring-brand-500 focus:outline-none"
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="active">Đang kinh doanh</option>
+            <option value="inactive">Ngừng kinh doanh</option>
+          </select>
+
+          {/* Category Filter */}
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -207,12 +235,45 @@ export const ProductsPage: React.FC = () => {
         </TableBody>
       </Table>
 
+      {/* Pagination Controls */}
+      {meta.totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-white border border-slate-200/80 rounded-xl shadow-xs text-xs text-slate-600">
+          <div>
+            Hiển thị <span className="font-semibold text-slate-900">{products.length}</span> trong tổng số{' '}
+            <span className="font-semibold text-slate-900">{meta.totalItems}</span> sản phẩm
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1 || loading}
+              onClick={() => handlePageChange(page - 1)}
+              leftIcon={<ChevronLeft className="w-3.5 h-3.5" />}
+            >
+              Trang trước
+            </Button>
+            <span className="font-medium text-slate-700 px-2">
+              Trang {page} / {meta.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= meta.totalPages || loading}
+              onClick={() => handlePageChange(page + 1)}
+              rightIcon={<ChevronRight className="w-3.5 h-3.5" />}
+            >
+              Trang sau
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Product Modal */}
       <ProductModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         productToEdit={editingProduct}
-        onSuccess={fetchProducts}
+        onSuccess={() => fetchProducts()}
       />
     </div>
   );

@@ -31,6 +31,10 @@ export const PurchaseOrdersPage: React.FC = () => {
 
   // New PO Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [prefilledItems, setPrefilledItems] = useState<any[]>([]);
+  const [promisedDate, setPromisedDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [creatingOrder, setCreatingOrder] = useState(false);
   const location = useLocation();
 
   const fetchOrders = async () => {
@@ -49,10 +53,54 @@ export const PurchaseOrdersPage: React.FC = () => {
 
   // If navigated with prefilled items from Recommendations
   useEffect(() => {
-    if (location.state?.prefilledItems) {
+    if (location.state?.prefilledItems && location.state.prefilledItems.length > 0) {
+      setPrefilledItems(location.state.prefilledItems);
+      const defaultDate = new Date();
+      defaultDate.setDate(defaultDate.getDate() + 2);
+      setPromisedDate(defaultDate.toISOString().split('T')[0]);
       setShowCreateModal(true);
     }
   }, [location.state]);
+
+  const handleCreateOrder = async () => {
+    setCreatingOrder(true);
+    try {
+      const itemsToCreate = prefilledItems.length > 0
+        ? prefilledItems.map((i) => ({
+            productSku: i.sku,
+            orderedQuantity: Number(i.quantity),
+            unitPrice: Number(i.unitPrice),
+          }))
+        : [
+            {
+              productSku: 'MILK-VNM-180',
+              orderedQuantity: 24,
+              unitPrice: 6200,
+            },
+          ];
+
+      const supId = prefilledItems[0]?.supplierId || 1;
+      const defaultDate = new Date();
+      defaultDate.setDate(defaultDate.getDate() + 2);
+      const pDate = promisedDate || defaultDate.toISOString().split('T')[0];
+
+      await orderApi.createOrder({
+        supplierId: Number(supId),
+        promisedDeliveryDate: pDate,
+        notes: notes || 'Đơn hàng tạo từ Khuyến nghị mua hàng DSS AI',
+        items: itemsToCreate,
+      });
+
+      setToastMsg({ type: 'success', text: 'Tạo đơn mua hàng (DRAFT) thành công vào cơ sở dữ liệu!' });
+      setShowCreateModal(false);
+      setPrefilledItems([]);
+      await fetchOrders();
+    } catch (err: any) {
+      setToastMsg({ type: 'error', text: err?.response?.data?.error?.message || 'Lỗi khi tạo đơn mua hàng!' });
+    } finally {
+      setCreatingOrder(false);
+    }
+  };
 
   const handleConfirmOrder = async (id: number) => {
     setActionLoading(true);
@@ -305,8 +353,41 @@ export const PurchaseOrdersPage: React.FC = () => {
             Hệ thống hỗ trợ tự động điền danh sách sản phẩm từ Khuyến Nghị Mua Hàng DSS (UC-010). Khi tạo xong, đơn hàng sẽ được gán mã chuẩn tự động <code>PO-YYYYMMDD-XXXX</code> (BR-024).
           </div>
 
-          <Input label="Ngày Hẹn Giao Hàng Dự Kiến" type="date" required />
-          <Input label="Ghi Chú Đặt Hàng" placeholder="Ví dụ: Giao vào giờ hành chính..." />
+          {prefilledItems.length > 0 && (
+            <div className="space-y-2 border border-slate-200 rounded-xl p-3 bg-slate-50">
+              <div className="font-bold text-slate-800 text-xs flex justify-between">
+                <span>Nhà Cung Cấp: {prefilledItems[0]?.supplierName || `ID: ${prefilledItems[0]?.supplierId}`}</span>
+                <span>{prefilledItems.length} mặt hàng</span>
+              </div>
+              <div className="max-h-40 overflow-y-auto space-y-1">
+                {prefilledItems.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-[11px] bg-white p-2 rounded border border-slate-100">
+                    <div>
+                      <span className="font-bold text-slate-900">{item.name}</span>{' '}
+                      <span className="font-mono text-slate-400">({item.sku})</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-brand-600">{item.quantity}</span> × {formatCurrency(item.unitPrice)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Input
+            label="Ngày Hẹn Giao Hàng Dự Kiến"
+            type="date"
+            required
+            value={promisedDate}
+            onChange={(e) => setPromisedDate(e.target.value)}
+          />
+          <Input
+            label="Ghi Chú Đặt Hàng"
+            placeholder="Ví dụ: Giao vào giờ hành chính..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button variant="outline" onClick={() => setShowCreateModal(false)}>
@@ -314,11 +395,8 @@ export const PurchaseOrdersPage: React.FC = () => {
             </Button>
             <Button
               variant="primary"
-              onClick={() => {
-                alert('Tạo đơn mua hàng mẫu thành công!');
-                setShowCreateModal(false);
-                fetchOrders();
-              }}
+              onClick={handleCreateOrder}
+              isLoading={creatingOrder}
             >
               Lưu Bản Nháp (DRAFT)
             </Button>

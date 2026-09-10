@@ -24,25 +24,27 @@ export const ingestionApi = {
     return res.data.data;
   },
 
-  downloadTemplate: (type: ImportType) => {
-    let csvContent = '';
-    let filename = '';
+  downloadTemplate: async (type: ImportType, format: 'xlsx' | 'csv' = 'xlsx'): Promise<void> => {
+    const res = await apiClient.get(`/data-import/templates/${type}`, {
+      params: { format },
+      responseType: 'blob',
+    });
 
-    if (type === 'SALES_HISTORY') {
-      csvContent = 'SKU,Date,QuantitySold,UnitPrice\n' +
-        'MILK-VNM-180,2026-09-01,24,6200\n' +
-        'BEER-TIGER-330,2026-09-01,48,16000\n' +
-        'NOODLE-HAOHAO-75,2026-09-01,60,4500\n';
-      filename = 'Template_LichSuBanHang.csv';
-    } else {
-      csvContent = 'SKU,OnHand\n' +
-        'MILK-VNM-180,120\n' +
-        'BEER-TIGER-330,85\n' +
-        'NOODLE-HAOHAO-75,200\n';
-      filename = 'Template_KiemKeTonKho.csv';
+    let filename = `Mau_Nhap_Lieu_${type}.${format}`;
+    const disposition = res.headers['content-disposition'] || res.headers['Content-Disposition'];
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      if (match && match[1]) {
+        filename = decodeURIComponent(match[1]);
+      }
     }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const mimeType =
+      format === 'xlsx'
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv;charset=utf-8;';
+
+    const blob = new Blob([res.data], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

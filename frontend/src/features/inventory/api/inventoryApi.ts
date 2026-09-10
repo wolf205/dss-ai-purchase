@@ -140,9 +140,11 @@ export const inventoryApi = {
     }
   },
 
-  getItems: async (params?: { riskLevel?: string; isDeadStock?: boolean; search?: string }): Promise<InventoryItem[]> => {
+  getItems: async (params?: { riskLevel?: string; isDeadStock?: boolean; search?: string; limit?: number; page?: number }): Promise<InventoryItem[]> => {
     try {
-      const res = await apiClient.get<{ success: boolean; data: InventoryItem[] }>('/inventory/items', { params });
+      const res = await apiClient.get<{ success: boolean; data: InventoryItem[] }>('/inventory/items', {
+        params: { limit: 200, ...params },
+      });
       return res.data.data;
     } catch {
       let filtered = [...MOCK_ITEMS];

@@ -147,6 +147,24 @@ export const forecastApi = {
       };
     }
   },
+
+  generateForecasts: async (params?: { horizonDays?: number }): Promise<{
+    skusAnalyzed: number;
+    horizonsGenerated: number[];
+    executionTimeMs: number;
+    message: string;
+  }> => {
+    const res = await apiClient.post<{
+      success: boolean;
+      data: {
+        skusAnalyzed: number;
+        horizonsGenerated: number[];
+        executionTimeMs: number;
+        message: string;
+      };
+    }>('/forecasts/generate', params || {});
+    return res.data.data;
+  },
 };
 
 export default forecastApi;
