@@ -4,3 +4,5 @@ export * from './DuplicateResourceException';
 export * from './UnauthorizedException';
 export * from './ForbiddenException';
 export * from './ValidationException';
+export * from './TooManyRequestsException';
+

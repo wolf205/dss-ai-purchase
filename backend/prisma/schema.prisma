@@ -142,6 +142,7 @@ model User {
   cancelledPurchaseOrders  PurchaseOrder[]            @relation("POCancelledBy")
   deliveryHistories        DeliveryHistory[]
   auditLogs                AuditLog[]
+  refreshTokens            RefreshToken[]
 
   @@map("users")
 }
@@ -526,3 +527,23 @@ model AuditLog {
   @@index([userId, createdAt(sort: Desc)], map: "idx_audit_logs_user_date")
   @@map("audit_logs")
 }
+
+// Bảng 19: refresh_tokens (Quản lý phiên làm việc dài hạn & Token Rotation)
+model RefreshToken {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String    @map("user_id") @db.Uuid
+  tokenHash           String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt           DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt           DateTime? @map("revoked_at") @db.Timestamptz(6)
+  replacedByTokenHash String?   @map("replaced_by_token_hash") @db.VarChar(255)
+  ipAddress           String?   @map("ip_address") @db.VarChar(45)
+  userAgent           String?   @map("user_agent") @db.Text
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_refresh_tokens_user_id")
+  @@index([tokenHash], map: "idx_refresh_tokens_token_hash")
+  @@map("refresh_tokens")
+}
+

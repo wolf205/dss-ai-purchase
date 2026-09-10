@@ -1,25 +1,20 @@
-import jwt, { SignOptions } from 'jsonwebtoken';
-import { ITokenService, TokenPair, TokenPayload } from '../../application/ports/ITokenService';
+import crypto from 'crypto';
+import jwt, { SignOptions, TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken';
+import { ITokenService, TokenPayload, AccessTokenResult } from '../../application/ports/ITokenService';
+import { UnauthorizedException } from '../../application/exceptions/UnauthorizedException';
 
 export class JwtTokenService implements ITokenService {
   private readonly accessSecret: string;
-  private readonly refreshSecret: string;
   private readonly accessExpiresIn: string;
-  private readonly refreshExpiresIn: string;
 
   constructor() {
     this.accessSecret = process.env.JWT_ACCESS_SECRET || 'dss_access_secret_key_default_2026';
-    this.refreshSecret = process.env.JWT_REFRESH_SECRET || 'dss_refresh_secret_key_default_2026';
     this.accessExpiresIn = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
-    this.refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
   }
 
-  public generateTokenPair(payload: TokenPayload): TokenPair {
+  public generateAccessToken(payload: TokenPayload): AccessTokenResult {
     const accessOptions: SignOptions = {
       expiresIn: this.accessExpiresIn as any,
-    };
-    const refreshOptions: SignOptions = {
-      expiresIn: this.refreshExpiresIn as any,
     };
 
     const accessToken = jwt.sign(
@@ -32,46 +27,50 @@ export class JwtTokenService implements ITokenService {
       accessOptions
     );
 
-    const refreshToken = jwt.sign(
-      {
-        userId: payload.userId,
-        username: payload.username,
-        role: payload.role,
-      },
-      this.refreshSecret,
-      refreshOptions
-    );
-
     return {
       accessToken,
-      refreshToken,
-      expiresIn: 900, // 15 minutes in seconds
+      expiresIn: 900, // 15 minutes in seconds (Short-lived Access Token)
     };
   }
 
-  public verifyAccessToken(token: string): TokenPayload {
-    try {
-      const decoded = jwt.verify(token, this.accessSecret) as TokenPayload;
-      return {
-        userId: decoded.userId,
-        username: decoded.username,
-        role: decoded.role,
-      };
-    } catch (error: any) {
-      throw new Error(`Token không hợp lệ hoặc đã hết hạn: ${error.message}`);
-    }
+  public generateRefreshToken(): string {
+    return crypto.randomBytes(32).toString('hex');
   }
 
-  public verifyRefreshToken(token: string): TokenPayload {
+  public hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+
+  public verifyAccessToken(token: string): TokenPayload {
     try {
-      const decoded = jwt.verify(token, this.refreshSecret) as TokenPayload;
+      const decoded = jwt.verify(token, this.accessSecret) as any;
       return {
         userId: decoded.userId,
         username: decoded.username,
         role: decoded.role,
+        iat: decoded.iat,
       };
     } catch (error: any) {
-      throw new Error(`Refresh token không hợp lệ hoặc đã hết hạn: ${error.message}`);
+      if (error instanceof TokenExpiredError) {
+        throw new UnauthorizedException(
+          'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.',
+          'TOKEN_EXPIRED',
+          { expiredAt: error.expiredAt }
+        );
+      }
+      if (error instanceof JsonWebTokenError) {
+        throw new UnauthorizedException(
+          'Token xác thực không hợp lệ hoặc sai chữ ký.',
+          'TOKEN_INVALID'
+        );
+      }
+      throw new UnauthorizedException(
+        'Xác thực quyền truy cập thất bại.',
+        'UNAUTHORIZED',
+        error.message
+      );
     }
   }
 }
+

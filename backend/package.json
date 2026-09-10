@@ -5,7 +5,7 @@
   "main": "dist/api/server.js",
   "scripts": {
     "build": "rimraf dist && tsc && tsc-alias && npm run build:seed",
-    "build:seed": "tsc prisma/seed.ts --outDir dist/prisma --target ES2022 --module CommonJS --moduleResolution node --skipLibCheck --esModuleInterop",
+    "build:seed": "tsc prisma/seed.ts src/types/express.d.ts --outDir dist --target ES2022 --module CommonJS --moduleResolution node --skipLibCheck --esModuleInterop",
     "start": "node dist/api/server.js",
     "dev": "nodemon --watch src -e ts --exec ts-node -r tsconfig-paths/register src/api/server.ts",
     "prisma:generate": "prisma generate",
@@ -13,7 +13,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "node dist/prisma/seed.js",
     "prisma:seed:dev": "ts-node -r tsconfig-paths/register prisma/seed.ts",
-    "test": "jest",
+    "seed:phase6": "ts-node -r tsconfig-paths/register prisma/seed-phase6.ts",
+    "test": "jest --runInBand",
     "test:watch": "jest --watch"
   },
   "prisma": {
@@ -28,10 +29,12 @@
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.7.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.3.0",
     "prisma": "^5.20.0",
+    "rate-limiter-flexible": "^11.2.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

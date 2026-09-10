@@ -1,31 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
+import { UnauthorizedException, ForbiddenException } from '../../application/exceptions';
 
 export const rbacMiddleware = (allowedRoles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'UNAUTHORIZED',
-          message: 'Vui lòng đăng nhập trước khi thực hiện thao tác này',
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      return next(
+        new UnauthorizedException(
+          'Vui lòng đăng nhập trước khi thực hiện thao tác này',
+          'UNAUTHORIZED'
+        )
+      );
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      res.status(403).json({
-        success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: `Bạn không có quyền thực hiện chức năng này. Yêu cầu quyền: ${allowedRoles.join(', ')}`,
-        },
-        timestamp: new Date().toISOString(),
-      });
-      return;
+      return next(
+        new ForbiddenException(
+          `Bạn không có quyền thực hiện chức năng này. Yêu cầu quyền: ${allowedRoles.join(', ')}`,
+          'FORBIDDEN'
+        )
+      );
     }
 
-    next();
+    return next();
   };
 };
+

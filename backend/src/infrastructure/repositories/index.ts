@@ -11,3 +11,7 @@ export * from './PrismaDemandForecastRepository';
 export * from './PrismaAbcXyzAnalysisRepository';
 export * from './PrismaPurchaseRecommendationRepository';
 export * from './PrismaColdStartRepository';
+export * from './PrismaRefreshTokenRepository';
+export * from './PrismaAuditLogRepository';
+
+

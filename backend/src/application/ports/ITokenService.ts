@@ -2,16 +2,20 @@ export interface TokenPayload {
   userId: string;
   username: string;
   role: string;
+  iat?: number;
 }
 
-export interface TokenPair {
+export interface AccessTokenResult {
   accessToken: string;
-  refreshToken: string;
-  expiresIn: number; // in seconds (e.g. 900 for 15m)
+  expiresIn: number; // in seconds (900s for 15m default, or custom)
 }
 
 export interface ITokenService {
-  generateTokenPair(payload: TokenPayload): TokenPair;
+  generateAccessToken(payload: TokenPayload): AccessTokenResult;
+  generateRefreshToken(): string;
+  hashToken(token: string): string;
   verifyAccessToken(token: string): TokenPayload;
-  verifyRefreshToken(token: string): TokenPayload;
 }
+
+
+
