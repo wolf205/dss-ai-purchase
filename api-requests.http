@@ -1,0 +1,256 @@
+### ==============================================================================
+### DSS AI PURCHASE — REST API TEST SUITE
+### Sử dụng extension "REST Client" (Huachao Mao) hoặc "Thunder Client" trong VS Code
+### ==============================================================================
+
+@baseUrl = http://localhost:3000/api/v1
+@host = http://localhost:3000
+
+### ------------------------------------------------------------------------------
+### 1. HEALTH CHECKS
+### ------------------------------------------------------------------------------
+
+# @name healthCheckRoot
+GET {{host}}/health HTTP/1.1
+
+###
+
+# @name healthCheckApi
+GET {{baseUrl}}/health HTTP/1.1
+
+
+### ------------------------------------------------------------------------------
+### 2. AUTHENTICATION (UC-001)
+### ------------------------------------------------------------------------------
+
+# @name loginAdmin
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Admin@123"
+}
+
+### Lưu Access Token từ phản hồi của loginAdmin
+@authToken = {{loginAdmin.response.body.data.accessToken}}
+@refreshToken = {{loginAdmin.response.body.data.refreshToken}}
+
+###
+
+# @name loginStaff
+POST {{baseUrl}}/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "username": "staff",
+  "password": "Staff@123"
+}
+
+###
+
+# @name getProfile
+GET {{baseUrl}}/auth/me HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name refreshAccessToken
+POST {{baseUrl}}/auth/refresh-token HTTP/1.1
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+
+### ------------------------------------------------------------------------------
+### 3. QUẢN LÝ SẢN PHẨM & SKU (UC-003, UC-004)
+### ------------------------------------------------------------------------------
+
+# @name getProductsList
+GET {{baseUrl}}/products?page=1&limit=10 HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name searchProducts
+GET {{baseUrl}}/products?search=Bia&category=Đồ uống & Giải khát&page=1&limit=5 HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name getProductBySku
+GET {{baseUrl}}/products/BEER-333-330 HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name createProduct
+POST {{baseUrl}}/products HTTP/1.1
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "sku": "TEST-SKU-001",
+  "name": "Sản phẩm thử nghiệm chất lượng cao",
+  "category": "Thực phẩm khô",
+  "unit": "Hộp",
+  "costPrice": 45000,
+  "sellingPrice": 60000,
+  "defaultLeadTime": 3,
+  "minSafetyStock": 15,
+  "supplierIds": []
+}
+
+###
+
+# @name updateProductStatus
+PATCH {{baseUrl}}/products/TEST-SKU-001/status HTTP/1.1
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "isActive": false
+}
+
+
+### ------------------------------------------------------------------------------
+### 4. DATA IMPORT & TEMPLATES (UC-002)
+### ------------------------------------------------------------------------------
+
+# @name downloadSalesHistoryTemplateXlsx
+GET {{baseUrl}}/data-import/templates/SALES_HISTORY?format=xlsx HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name downloadInventoryTemplateCsv
+GET {{baseUrl}}/data-import/templates/INVENTORY_SNAPSHOT?format=csv HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name getImportLogs
+GET {{baseUrl}}/data-import/logs?page=1&limit=10 HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+
+### ------------------------------------------------------------------------------
+### 5. TỒN KHO & PHÂN TÍCH RỦI RO DSS (UC-005, UC-006)
+### ------------------------------------------------------------------------------
+
+# @name getInventoryDashboard
+GET {{baseUrl}}/inventory/dashboard HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name getCriticalRiskInventory
+GET {{baseUrl}}/inventory/items?riskLevel=CRITICAL&page=1&limit=10 HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name getOutOfStockInventory
+GET {{baseUrl}}/inventory/items?riskLevel=OUT_OF_STOCK&page=1&limit=10 HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name getAbcXyzMatrix
+GET {{baseUrl}}/inventory/abc-xyz HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+
+### ------------------------------------------------------------------------------
+### 6. KHUYẾN NGHỊ MUA HÀNG AI (UC-008, UC-009)
+### ------------------------------------------------------------------------------
+
+# @name getRecommendations
+GET {{baseUrl}}/recommendations?page=1&limit=10 HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name runDssAnalysis
+POST {{baseUrl}}/recommendations/run-analysis HTTP/1.1
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{}
+
+
+### ------------------------------------------------------------------------------
+### 7. DỰ BÁO NHU CẦU AI (UC-007)
+### ------------------------------------------------------------------------------
+
+# @name getForecasts
+GET {{baseUrl}}/forecasts HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name getSkuForecast
+GET {{baseUrl}}/forecasts/BEER-333-330 HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+
+### ------------------------------------------------------------------------------
+### 8. ĐƠN MUA HÀNG PO & QUẢN LÝ VÒNG ĐỜI (UC-010, UC-011, UC-012)
+### ------------------------------------------------------------------------------
+
+# @name getPurchaseOrdersList
+GET {{baseUrl}}/purchase-orders?page=1&limit=10 HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name createPurchaseOrder
+POST {{baseUrl}}/purchase-orders HTTP/1.1
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "supplierId": 1,
+  "expectedDeliveryDate": "2026-09-20T00:00:00.000Z",
+  "notes": "Đơn hàng thử nghiệm tạo qua REST Client",
+  "items": [
+    {
+      "sku": "BEER-333-330",
+      "quantity": 50,
+      "unitPrice": 255000
+    }
+  ]
+}
+
+
+### ------------------------------------------------------------------------------
+### 9. NHÀ CUNG CẤP & BẢNG ĐIỂM ĐÁNH GIÁ (UC-013, UC-014)
+### ------------------------------------------------------------------------------
+
+# @name getSuppliersList
+GET {{baseUrl}}/suppliers HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name getSupplierEvaluations
+GET {{baseUrl}}/suppliers/evaluations HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+###
+
+# @name getSupplierWeights
+GET {{baseUrl}}/suppliers/weights HTTP/1.1
+Authorization: Bearer {{authToken}}
+
+
+### ------------------------------------------------------------------------------
+### 10. CẤU HÌNH THIẾT LẬP HỆ THỐNG DSS (UC-015)
+### ------------------------------------------------------------------------------
+
+# @name getSupplierWeightsConfig
+GET {{baseUrl}}/config/supplier-weights HTTP/1.1
+Authorization: Bearer {{authToken}}
+
